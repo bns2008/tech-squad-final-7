@@ -1,0 +1,25 @@
+File: images.png
+Analyzed at: 2026-07-21T15:13:09.438303
+------------------------------------------------------------
+CREATE TABLE ATM (
+    atmID SERIAL PRIMARY KEY,
+    cash VARCHAR(255),
+    location VARCHAR(255)
+);
+
+CREATE TABLE Customer (
+    custNo SERIAL PRIMARY KEY
+);
+
+CREATE TABLE Account (
+    acctNo SERIAL PRIMARY KEY
+);
+
+CREATE TABLE Withdrawal (
+    amount VARCHAR(255),
+    when VARCHAR(255),
+    atmID INTEGER REFERENCES ATM(atmID),
+    custNo INTEGER REFERENCES Customer(custNo),
+    acctNo INTEGER REFERENCES Account(acctNo),
+    PRIMARY KEY (atmID, custNo, acctNo)
+);

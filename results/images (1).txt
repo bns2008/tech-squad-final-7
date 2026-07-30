@@ -1,0 +1,24 @@
+File: images (1).png
+Analyzed at: 2026-07-21T15:29:06.787028
+------------------------------------------------------------
+CREATE TABLE Teacher (
+    Teacher_name VARCHAR(255) PRIMARY KEY
+);
+
+CREATE TABLE Courses (
+    Course_ID VARCHAR(255) PRIMARY KEY,
+    Course_name VARCHAR(255)
+);
+
+CREATE TABLE Teaches (
+    Teacher_name VARCHAR(255),
+    Course_ID VARCHAR(255)
+);
+
+ALTER TABLE Teaches
+    ADD CONSTRAINT fk_teaches_teacher
+    FOREIGN KEY (Teacher_name) REFERENCES Teacher(Teacher_name);
+
+ALTER TABLE Teaches
+    ADD CONSTRAINT fk_teaches_course
+    FOREIGN KEY (Course_ID) REFERENCES Courses(Course_ID);

@@ -1,0 +1,751 @@
+"use client";
+import { useState, useCallback, useEffect, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Wand2, Database, Table2, GitBranch, Timer,
+  Copy, Download, RefreshCw, CheckCircle,
+  AlertTriangle, ArrowRight, FileText, FileJson,
+  Sparkles, ChevronDown, ChevronUp, Lightbulb,
+  FolderOpen, Plus, X, Save,
+} from "lucide-react";
+import { useStore } from "@/lib/store";
+import { parseSQLStats, downloadText, downloadJSON, genId, formatTime, cn } from "@/lib/utils";
+import { canConvert, conversionsLeft, canCreateProject } from "@/lib/subscription";
+import type { Project, DBType } from "@/lib/types";
+import UpgradeLimitDialog from "@/components/UpgradeLimitDialog";
+import dynamic from "next/dynamic";
+import toast from "react-hot-toast";
+
+const MonacoEditor = dynamic(
+  () => import("@monaco-editor/react").then((m) => m.default),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="p-6 space-y-3">
+        {Array.from({ length: 10 }).map((_, i) => (
+          <div key={i} className="skeleton h-4" style={{ width: `${35 + Math.random() * 55}%` }} />
+        ))}
+      </div>
+    ),
+  }
+);
+
+const DB_OPTIONS = [
+  { value: "postgresql", label: "PostgreSQL", short: "PG",  color: "text-blue-500",   border: "border-blue-400",   bg: "bg-blue-50 dark:bg-blue-900/20"    },
+  { value: "mysql",      label: "MySQL",      short: "MY",  color: "text-orange-500", border: "border-orange-400", bg: "bg-orange-50 dark:bg-orange-900/20" },
+  { value: "sqlite",     label: "SQLite",     short: "SL",  color: "text-sky-500",    border: "border-sky-400",    bg: "bg-sky-50 dark:bg-sky-900/20"       },
+  { value: "mssql",      label: "SQL Server", short: "SS",  color: "text-red-500",    border: "border-red-400",    bg: "bg-red-50 dark:bg-red-900/20"       },
+  { value: "oracle",     label: "Oracle",     short: "ORA", color: "text-amber-500",  border: "border-amber-400",  bg: "bg-amber-50 dark:bg-amber-900/20"   },
+];
+
+const EXAMPLE_PROMPTS = [
+  "A university database with students, courses, professors, enrollments, and departments",
+  "An e-commerce platform with customers, products, orders, order items, categories, and reviews",
+  "A hospital system with patients, doctors, appointments, prescriptions, and wards",
+  "A social media app with users, posts, comments, likes, followers, and hashtags",
+  "A library management system with books, members, authors, loans, and reservations",
+  "A hotel booking system with hotels, rooms, guests, bookings, and payments",
+];
+
+const PROCESS_STEPS = [
+  "Analyzing description…",
+  "Designing entities…",
+  "Mapping relationships…",
+  "Generating diagram…",
+  "Writing SQL DDL…",
+];
+
+interface GenerateResult {
+  id: string;
+  description: string;
+  mermaid: string;
+  sql: string;
+  tables: string[];
+  dialect: string;
+  timestamp: number;
+  processingTime: number;
+  stats: { tables: number; relationships: number; attributes: number };
+}
+
+export default function GeneratePage({ onNavigate }: { onNavigate: (p: string) => void }) {
+  const { getSubscription, incrementConversions, theme, user, projects, upsertProject, upsertFile, setActiveProject } = useStore();
+  const sub = getSubscription();
+  const ownerId = user?.id ?? "";
+  const myProjects = projects.filter(p => p.ownerId === ownerId);
+
+  const [description, setDescription]   = useState("");
+  const [selectedDb, setSelectedDb]     = useState("postgresql");
+  const [status, setStatus]             = useState<"idle" | "processing" | "done" | "error">("idle");
+  const [result, setResult]             = useState<GenerateResult | null>(null);
+  const [error, setError]               = useState("");
+  const [step, setStep]                 = useState(0);
+  const [limitOpen, setLimitOpen]       = useState(false);
+  const [activeTab, setActiveTab]       = useState<"diagram" | "sql">("diagram");
+  const [showExamples, setShowExamples] = useState(false);
+  const [mermaidSvg, setMermaidSvg]     = useState<string>("");
+  const [mermaidError, setMermaidError] = useState(false);
+  const diagramRef = useRef<HTMLDivElement>(null);
+
+  // Save-to-project modal state
+  const [saveOpen, setSaveOpen]         = useState(false);
+  const [saveMode, setSaveMode]         = useState<"existing" | "new">("existing");
+  const [saveProjectId, setSaveProjectId] = useState<string>("");
+  const [newProjectName, setNewProjectName] = useState("");
+  const [saving, setSaving]             = useState(false);
+
+  const activeDb = DB_OPTIONS.find((d) => d.value === selectedDb) ?? DB_OPTIONS[0];
+  const left = conversionsLeft(sub);
+
+  // ── Render Mermaid diagram ──────────────────────────────────────────────────
+  useEffect(() => {
+    if (!result?.mermaid) return;
+    let cancelled = false;
+    setMermaidError(false);
+    setMermaidSvg("");
+
+    import("mermaid").then((m) => {
+      const mermaid = m.default;
+      mermaid.initialize({
+        startOnLoad: false,
+        theme: theme === "dark" ? "dark" : "default",
+        er: { diagramPadding: 20, layoutDirection: "TB", minEntityWidth: 100 },
+      });
+      const id = `mermaid-${genId()}`;
+      mermaid.render(id, result.mermaid)
+        .then(({ svg }) => {
+          if (!cancelled) setMermaidSvg(svg);
+        })
+        .catch(() => {
+          if (!cancelled) setMermaidError(true);
+        });
+    });
+    return () => { cancelled = true; };
+  }, [result?.mermaid, theme]);
+
+  // ── Step animation ──────────────────────────────────────────────────────────
+  const runStepAnimation = useCallback(() => {
+    let s = 0;
+    setStep(0);
+    const id = setInterval(() => {
+      s = Math.min(s + 1, PROCESS_STEPS.length - 1);
+      setStep(s);
+    }, 1400);
+    return () => clearInterval(id);
+  }, []);
+
+  // ── Generate ────────────────────────────────────────────────────────────────
+  const generate = useCallback(async () => {
+    if (!description.trim()) { toast.error("Please enter a description first"); return; }
+    if (!canConvert(sub)) { setLimitOpen(true); return; }
+
+    setStatus("processing");
+    setError("");
+    setResult(null);
+    setMermaidSvg("");
+    const stopAnim = runStepAnimation();
+
+    try {
+      const t0 = Date.now();
+      const res = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ description: description.trim(), dialect: selectedDb }),
+      });
+      const data = await res.json();
+      stopAnim();
+
+      if (!res.ok || !data.sql || !data.mermaid) throw new Error(data.error || "Generation failed");
+
+      const { tables, fks, cols } = parseSQLStats(data.sql);
+      const generated: GenerateResult = {
+        id: genId(),
+        description: description.trim(),
+        mermaid: data.mermaid,
+        sql: data.sql,
+        tables: data.tables ?? [],
+        dialect: selectedDb,
+        timestamp: Date.now(),
+        processingTime: Date.now() - t0,
+        stats: { tables, relationships: fks, attributes: cols },
+      };
+      setResult(generated);
+      setStatus("done");
+      setActiveTab("diagram");
+      incrementConversions();
+      toast.success("Schema generated!");
+    } catch (err: any) {
+      stopAnim();
+      setError(err.message || "Generation failed");
+      setStatus("error");
+      toast.error(err.message || "Generation failed");
+    }
+  }, [description, selectedDb, sub, runStepAnimation, incrementConversions]);
+
+  const reset = () => {
+    setStatus("idle");
+    setResult(null);
+    setError("");
+    setStep(0);
+    setMermaidSvg("");
+  };
+
+  const baseName = result
+    ? result.description.slice(0, 30).trim().replace(/\s+/g, "_").toLowerCase()
+    : "schema";
+
+  // ── Save to Project ─────────────────────────────────────────────────────────
+  const openSaveModal = () => {
+    if (myProjects.length > 0) {
+      setSaveMode("existing");
+      setSaveProjectId(myProjects[0].id);
+    } else {
+      setSaveMode("new");
+    }
+    setNewProjectName(result ? result.description.slice(0, 40).trim() : "");
+    setSaveOpen(true);
+  };
+
+  const confirmSave = () => {
+    if (!result) return;
+    setSaving(true);
+
+    let targetProjectId = saveProjectId;
+
+    // Create new project if needed
+    if (saveMode === "new") {
+      if (!newProjectName.trim()) { toast.error("Enter a project name"); setSaving(false); return; }
+      if (!canCreateProject(sub, myProjects.length)) { toast.error("Project limit reached. Upgrade to Pro."); setSaving(false); return; }
+      const newProject: Project = {
+        id: genId(), ownerId,
+        name: newProjectName.trim(),
+        description: result.description,
+        dbType: result.dialect as DBType,
+        createdAt: Date.now(), updatedAt: Date.now(),
+        files: [],
+      };
+      upsertProject(newProject);
+      targetProjectId = newProject.id;
+    }
+
+    // Add as a completed file
+    const fileName = `${baseName}.sql`;
+    upsertFile(targetProjectId, ownerId, {
+      id: genId(),
+      name: fileName,
+      imageUrl: "",          // text-generated, no source image
+      status: "completed",
+      sql: result.sql,
+      uploadedAt: Date.now(),
+      completedAt: Date.now(),
+      processingTime: result.processingTime,
+      stats: result.stats,
+    });
+
+    setSaving(false);
+    setSaveOpen(false);
+    toast.success("Saved to project!");
+    setActiveProject(targetProjectId);
+    onNavigate("project-detail");
+  };
+
+  return (
+    <div className="w-full max-w-6xl mx-auto px-1">
+
+      {/* ── Header ── */}
+      <div className="flex items-start justify-between mb-8">
+        <div>
+          <div className="flex items-center gap-3 mb-2">
+            <Wand2 size={22} className="text-primary-600" />
+            <h1 className="text-3xl font-bold text-[var(--text)]">Generate Schema</h1>
+            <span className="badge badge-purple text-xs px-2.5 py-1">AI Powered</span>
+          </div>
+          <p className="text-base text-[var(--text-muted)]">
+            Describe your database in plain English and get an ER diagram + SQL instantly.&nbsp;
+            <span className="font-semibold text-[var(--text)]">{left} conversion{left !== 1 ? "s" : ""}</span>
+            &nbsp;remaining this month.
+          </p>
+        </div>
+        {sub.planId !== "pro" && (
+          <button
+            onClick={() => onNavigate("pricing")}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold shrink-0
+              bg-gradient-to-r from-primary-600 to-primary-700 text-white
+              hover:shadow-lg hover:shadow-primary-500/25 transition-all"
+          >
+            Upgrade to Pro <ArrowRight size={14} />
+          </button>
+        )}
+      </div>
+
+      {/* ── Database Selector ── */}
+      <div className="mb-6">
+        <div className="flex items-center gap-2 mb-3">
+          <Database size={15} className="text-[var(--text-muted)]" />
+          <span className="text-sm font-semibold text-[var(--text-muted)] uppercase tracking-widest">
+            Target Database
+          </span>
+        </div>
+        <div className="flex items-center flex-wrap gap-3">
+          {DB_OPTIONS.map((db) => (
+            <button
+              key={db.value}
+              onClick={() => setSelectedDb(db.value)}
+              className={cn(
+                "flex items-center gap-2.5 px-5 py-2.5 rounded-xl text-sm font-semibold border-2 transition-all",
+                selectedDb === db.value
+                  ? `${db.bg} ${db.color} ${db.border} shadow-sm scale-[1.03]`
+                  : "border-[var(--border)] text-[var(--text-muted)] hover:border-[var(--text-subtle)] hover:text-[var(--text)] hover:scale-[1.02]"
+              )}
+            >
+              <span className={cn(
+                "w-2.5 h-2.5 rounded-full transition-colors",
+                selectedDb === db.value ? "bg-current" : "bg-[var(--border)]"
+              )} />
+              {db.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Input Area ── */}
+      <div className="card p-5 mb-6">
+        <div className="flex items-center justify-between mb-3">
+          <label className="text-sm font-bold text-[var(--text)]">Describe your database</label>
+          <button
+            onClick={() => setShowExamples(!showExamples)}
+            className="flex items-center gap-1.5 text-xs text-primary-600 font-medium hover:underline"
+          >
+            <Lightbulb size={13} />
+            Examples
+            {showExamples ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+          </button>
+        </div>
+
+        <AnimatePresence>
+          {showExamples && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }}
+              className="overflow-hidden mb-3"
+            >
+              <div className="flex flex-wrap gap-2 pb-1">
+                {EXAMPLE_PROMPTS.map((ex) => (
+                  <button
+                    key={ex}
+                    onClick={() => { setDescription(ex); setShowExamples(false); }}
+                    className="text-xs px-3 py-1.5 rounded-lg border border-[var(--border)]
+                      bg-[var(--surface)] text-[var(--text-muted)] hover:border-primary-400
+                      hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20
+                      transition-all text-left"
+                  >
+                    {ex}
+                  </button>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <textarea
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          disabled={status === "processing"}
+          placeholder="e.g. A university database with students, courses, professors, enrollments, and departments. Students can enroll in multiple courses. Each course is taught by one professor who belongs to a department."
+          rows={4}
+          className="w-full resize-none rounded-xl border border-[var(--border)] bg-[var(--surface)]
+            text-[var(--text)] placeholder:text-[var(--text-subtle)] text-sm px-4 py-3
+            focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500
+            transition-all disabled:opacity-50"
+        />
+        <div className="flex items-center justify-between mt-3">
+          <span className="text-xs text-[var(--text-subtle)]">
+            {description.length} / 2000 characters
+          </span>
+          <div className="flex items-center gap-2">
+            {status === "done" && (
+              <button onClick={reset} className="btn-ghost text-sm px-4 py-2">
+                <RefreshCw size={13} /> Reset
+              </button>
+            )}
+            <button
+              onClick={generate}
+              disabled={status === "processing" || !description.trim() || !canConvert(sub)}
+              className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold
+                bg-gradient-to-r from-primary-600 to-primary-700 text-white
+                hover:shadow-lg hover:shadow-primary-500/25 transition-all
+                disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
+            >
+              {status === "processing" ? (
+                <>
+                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Generating…
+                </>
+              ) : (
+                <>
+                  <Sparkles size={14} />
+                  Generate
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Processing ── */}
+      <AnimatePresence mode="wait">
+        {status === "processing" && (
+          <motion.div key="processing"
+            initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
+            className="card p-16 flex flex-col items-center gap-8"
+          >
+            <div className="relative w-20 h-20">
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 1.4, repeat: Infinity, ease: "linear" }}
+                className="absolute inset-0 rounded-full border-[3px] border-primary-500 border-t-transparent"
+              />
+              <div className="absolute inset-3 rounded-full bg-primary-50 dark:bg-primary-900/30 flex items-center justify-center">
+                <div className="w-4 h-4 rounded-full bg-primary-500 animate-pulse" />
+              </div>
+            </div>
+            <div className="text-center">
+              <AnimatePresence mode="wait">
+                <motion.p key={step}
+                  initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.25 }}
+                  className="text-xl font-bold text-[var(--text)] mb-2"
+                >
+                  {PROCESS_STEPS[step]}
+                </motion.p>
+              </AnimatePresence>
+              <p className="text-sm text-[var(--text-muted)] max-w-xs line-clamp-2">"{description}"</p>
+              <p className="text-sm text-[var(--text-subtle)] mt-1">
+                Generating <span className={cn("font-semibold", activeDb.color)}>{activeDb.label}</span> schema
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              {PROCESS_STEPS.map((_, i) => (
+                <div key={i} className={cn(
+                  "rounded-full transition-all duration-300",
+                  i <= step ? "w-3 h-3 bg-primary-500" : "w-2.5 h-2.5 bg-[var(--border)]"
+                )} />
+              ))}
+            </div>
+          </motion.div>
+        )}
+
+        {/* ── Error ── */}
+        {status === "error" && (
+          <motion.div key="error"
+            initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
+            className="card p-16 flex flex-col items-center gap-5 text-center"
+          >
+            <div className="w-16 h-16 rounded-2xl bg-red-50 dark:bg-red-500/10 flex items-center justify-center">
+              <AlertTriangle size={28} className="text-red-500" />
+            </div>
+            <div>
+              <p className="text-lg font-bold text-[var(--text)] mb-2">Generation Failed</p>
+              <p className="text-base text-[var(--text-muted)] max-w-sm">{error}</p>
+            </div>
+            <button onClick={reset} className="btn-primary text-sm px-6 py-2.5">
+              <RefreshCw size={15} /> Try Again
+            </button>
+          </motion.div>
+        )}
+
+        {/* ── Result ── */}
+        {status === "done" && result && (
+          <motion.div key="done"
+            initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
+            className="space-y-5"
+          >
+            {/* Summary card */}
+            <div className="card p-5">
+              <div className="flex items-start gap-4 mb-4">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <CheckCircle size={18} className="text-emerald-500 flex-shrink-0" />
+                    <p className="text-base font-bold text-[var(--text)] truncate">
+                      Schema generated successfully
+                    </p>
+                  </div>
+                  <p className="text-sm text-[var(--text-muted)] line-clamp-2 mt-1">"{result.description}"</p>
+                  <div className="flex items-center flex-wrap gap-2 mt-3">
+                    <span className="flex items-center gap-1.5 text-sm text-[var(--text-muted)] bg-[var(--surface)] px-3 py-1 rounded-lg border border-[var(--border)]">
+                      <Table2 size={13} />
+                      {result.stats.tables} tables
+                    </span>
+                    <span className="flex items-center gap-1.5 text-sm text-[var(--text-muted)] bg-[var(--surface)] px-3 py-1 rounded-lg border border-[var(--border)]">
+                      <GitBranch size={13} />
+                      {result.stats.relationships} relationships
+                    </span>
+                    <span className="flex items-center gap-1.5 text-sm text-[var(--text-muted)] bg-[var(--surface)] px-3 py-1 rounded-lg border border-[var(--border)]">
+                      <Timer size={13} />
+                      {formatTime(result.processingTime)}
+                    </span>
+                    <span className={cn(
+                      "flex items-center gap-1.5 text-sm font-semibold px-3 py-1 rounded-lg border",
+                      activeDb.bg, activeDb.color, activeDb.border
+                    )}>
+                      <Database size={13} />
+                      {activeDb.label}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Export buttons */}
+              <div className="flex items-center gap-2 flex-wrap pt-4 border-t border-[var(--border)]">
+                <span className="text-sm font-semibold text-[var(--text-muted)] mr-1">Export SQL as:</span>
+                <button
+                  onClick={() => { navigator.clipboard.writeText(result.sql); toast.success("SQL copied!"); }}
+                  className="btn-ghost text-sm px-4 py-2">
+                  <Copy size={14} /> Copy SQL
+                </button>
+                <button
+                  onClick={() => downloadText(result.sql, `${baseName}.sql`)}
+                  className="btn-ghost text-sm px-4 py-2">
+                  <Download size={14} /> .sql
+                </button>
+                <button
+                  onClick={() => downloadText(result.sql, `${baseName}.txt`)}
+                  className="btn-ghost text-sm px-4 py-2">
+                  <FileText size={14} /> .txt
+                </button>
+                <button
+                  onClick={() => downloadJSON({ description: result.description, sql: result.sql, mermaid: result.mermaid, stats: result.stats }, `${baseName}.json`)}
+                  className="btn-ghost text-sm px-4 py-2">
+                  <FileJson size={14} /> .json
+                </button>
+                <button
+                  onClick={() => { navigator.clipboard.writeText(result.mermaid); toast.success("Diagram copied!"); }}
+                  className="btn-ghost text-sm px-4 py-2 ml-auto">
+                  <Copy size={14} /> Copy Mermaid
+                </button>
+                <button
+                  onClick={openSaveModal}
+                  className="flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-semibold
+                    bg-gradient-to-r from-primary-600 to-primary-700 text-white
+                    hover:shadow-lg hover:shadow-primary-500/25 transition-all">
+                  <Save size={14} /> Save to Project
+                </button>
+              </div>
+            </div>
+
+            {/* Tabs: Diagram / SQL */}
+            <div className="card overflow-hidden">
+              <div className="flex items-center border-b border-[var(--border)]">
+                {(["diagram", "sql"] as const).map((tab) => (
+                  <button
+                    key={tab}
+                    onClick={() => setActiveTab(tab)}
+                    className={cn(
+                      "px-6 py-3.5 text-sm font-semibold transition-colors capitalize",
+                      activeTab === tab
+                        ? "text-primary-600 border-b-2 border-primary-600 -mb-px bg-primary-50 dark:bg-primary-900/20"
+                        : "text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--surface)]"
+                    )}
+                  >
+                    {tab === "diagram" ? "ER Diagram" : "SQL DDL"}
+                  </button>
+                ))}
+              </div>
+
+              {/* Diagram tab */}
+              {activeTab === "diagram" && (
+                <div className="p-5">
+                  {mermaidSvg ? (
+                    <div
+                      ref={diagramRef}
+                      className="overflow-auto rounded-xl border border-[var(--border)] bg-white dark:bg-[var(--surface)] p-4"
+                      style={{ minHeight: 320 }}
+                      dangerouslySetInnerHTML={{ __html: mermaidSvg }}
+                    />
+                  ) : mermaidError ? (
+                    <div className="flex flex-col items-center gap-4 py-12 text-center">
+                      <AlertTriangle size={24} className="text-amber-500" />
+                      <div>
+                        <p className="text-sm font-semibold text-[var(--text)]">Diagram preview unavailable</p>
+                        <p className="text-xs text-[var(--text-muted)] mt-1">The Mermaid syntax may need a tweak. You can still copy/download the SQL.</p>
+                      </div>
+                      <details className="text-left w-full max-w-lg">
+                        <summary className="text-xs text-primary-600 cursor-pointer font-medium">Show raw Mermaid syntax</summary>
+                        <pre className="mt-2 p-3 rounded-lg bg-[var(--surface)] text-xs text-[var(--text)] overflow-auto border border-[var(--border)] whitespace-pre-wrap">
+                          {result.mermaid}
+                        </pre>
+                      </details>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center py-16">
+                      <div className="w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* SQL tab */}
+              {activeTab === "sql" && (
+                <div>
+                  <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--border)]">
+                    <span className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest">Generated SQL</span>
+                    <span className="text-xs font-mono text-[var(--text-subtle)]">
+                      {result.sql.split("\n").length} lines
+                    </span>
+                  </div>
+                  <div className="h-[520px]">
+                    <MonacoEditor
+                      height="100%"
+                      language="sql"
+                      value={result.sql}
+                      theme={theme === "dark" ? "vs-dark" : "light"}
+                      options={{
+                        readOnly: true,
+                        fontSize: 14,
+                        fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+                        lineHeight: 22,
+                        minimap: { enabled: false },
+                        lineNumbers: "on",
+                        scrollBeyondLastLine: false,
+                        wordWrap: "on",
+                        padding: { top: 16, bottom: 16 },
+                        scrollbar: { verticalScrollbarSize: 6 },
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <UpgradeLimitDialog
+        open={limitOpen}
+        onClose={() => setLimitOpen(false)}
+        reason="conversions"
+        onNavigatePricing={() => onNavigate("pricing")}
+      />
+
+      {/* ── Save to Project modal ── */}
+      <AnimatePresence>
+        {saveOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+              className="card w-full max-w-md p-6"
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between mb-5">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-primary-50 dark:bg-primary-900/30 flex items-center justify-center">
+                    <FolderOpen size={16} className="text-primary-600" />
+                  </div>
+                  <h2 className="text-base font-bold text-[var(--text)]">Save to Project</h2>
+                </div>
+                <button onClick={() => setSaveOpen(false)}
+                  className="w-7 h-7 rounded-lg flex items-center justify-center text-[var(--text-muted)] hover:bg-[var(--surface)] transition-colors">
+                  <X size={16} />
+                </button>
+              </div>
+
+              {/* Schema snippet preview */}
+              <div className="mb-5 p-3 rounded-xl bg-[var(--surface)] border border-[var(--border)]">
+                <p className="text-xs font-semibold text-[var(--text-muted)] mb-1">Schema to save</p>
+                <p className="text-sm text-[var(--text)] line-clamp-2">"{result?.description}"</p>
+                <div className="flex items-center gap-2 mt-2">
+                  <span className="text-[10px] text-[var(--text-subtle)]">{result?.stats.tables} tables</span>
+                  <span className="text-[10px] text-[var(--text-subtle)]">·</span>
+                  <span className="text-[10px] text-[var(--text-subtle)]">{result?.stats.relationships} relationships</span>
+                  <span className={cn("ml-auto text-[10px] font-semibold px-2 py-0.5 rounded-full", activeDb.bg, activeDb.color)}>
+                    {activeDb.label}
+                  </span>
+                </div>
+              </div>
+
+              {/* Mode toggle */}
+              <div className="flex rounded-xl border border-[var(--border)] overflow-hidden mb-4">
+                {(["existing", "new"] as const).map((mode) => (
+                  <button key={mode} onClick={() => setSaveMode(mode)}
+                    className={cn(
+                      "flex-1 py-2.5 text-sm font-semibold transition-colors",
+                      saveMode === mode
+                        ? "bg-primary-600 text-white"
+                        : "text-[var(--text-muted)] hover:bg-[var(--surface)]"
+                    )}>
+                    {mode === "existing" ? "Existing Project" : "New Project"}
+                  </button>
+                ))}
+              </div>
+
+              {saveMode === "existing" ? (
+                myProjects.length === 0 ? (
+                  <div className="text-center py-4">
+                    <p className="text-sm text-[var(--text-muted)] mb-3">No projects yet.</p>
+                    <button onClick={() => setSaveMode("new")}
+                      className="btn-ghost text-sm"><Plus size={13} /> Create one</button>
+                  </div>
+                ) : (
+                  <div className="space-y-1.5 max-h-48 overflow-y-auto mb-4">
+                    {myProjects.map((p) => (
+                      <button key={p.id} onClick={() => setSaveProjectId(p.id)}
+                        className={cn(
+                          "w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 text-left transition-all",
+                          saveProjectId === p.id
+                            ? "border-primary-500 bg-primary-50 dark:bg-primary-900/20"
+                            : "border-[var(--border)] hover:border-primary-300 hover:bg-[var(--surface)]"
+                        )}>
+                        <div className="w-8 h-8 rounded-lg bg-primary-50 dark:bg-primary-900/30 flex items-center justify-center flex-shrink-0">
+                          <Database size={14} className="text-primary-600" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-[var(--text)] truncate">{p.name}</p>
+                          <p className="text-xs text-[var(--text-muted)]">{p.files.length} files · {p.dbType}</p>
+                        </div>
+                        {saveProjectId === p.id && (
+                          <CheckCircle size={16} className="text-primary-600 flex-shrink-0" />
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )
+              ) : (
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-[var(--text)] mb-1.5">Project Name</label>
+                  <input
+                    autoFocus
+                    value={newProjectName}
+                    onChange={(e) => setNewProjectName(e.target.value)}
+                    placeholder="e.g. University Database"
+                    className="w-full py-2.5 px-4 text-sm rounded-xl border border-[var(--border)]
+                      bg-[var(--card)] text-[var(--text)] placeholder:text-[var(--text-subtle)]
+                      focus:outline-none focus:ring-2 focus:ring-primary-500/25 focus:border-primary-500 transition-all"
+                  />
+                </div>
+              )}
+
+              <div className="flex gap-3 pt-2 border-t border-[var(--border)]">
+                <button onClick={() => setSaveOpen(false)} className="btn-ghost flex-1 justify-center text-sm py-2.5">
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmSave}
+                  disabled={saving || (saveMode === "existing" && !saveProjectId)}
+                  className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold
+                    bg-gradient-to-r from-primary-600 to-primary-700 text-white
+                    hover:shadow-lg hover:shadow-primary-500/25 transition-all
+                    disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
+                >
+                  {saving ? (
+                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <><Save size={14} /> Save</>
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
