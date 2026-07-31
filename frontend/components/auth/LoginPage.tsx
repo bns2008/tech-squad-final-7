@@ -3,8 +3,10 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { Eye, EyeOff, Mail, Lock, AlertCircle, Chrome } from "lucide-react";
 import { loginUser, googleLogin, seedSuperAdmin } from "@/lib/auth";
+import { apiGetProjects, apiGetQuickHistory } from "@/lib/api";
 import { useStore } from "@/lib/store";
 import toast from "react-hot-toast";
+import type { Project, QuickConvertResult } from "@/lib/types";
 
 export default function LoginPage({ onNavigate }: { onNavigate: (page: string) => void }) {
   const { setUser, setToken } = useStore();
@@ -23,6 +25,48 @@ export default function LoginPage({ onNavigate }: { onNavigate: (page: string) =
       const { user, token } = await loginUser(email, password);
       setUser(user);
       setToken(token);
+
+      // Load projects + quick history from DB for numeric (backend) users
+      const numericId = parseInt(user.id, 10);
+      if (!isNaN(numericId)) {
+        try {
+          const [projects, qHistory] = await Promise.all([
+            apiGetProjects(numericId),
+            apiGetQuickHistory(numericId),
+          ]);
+          // Map backend projects → frontend Project shape
+          const mapped: Project[] = projects.map((p) => ({
+            id: p.id,
+            ownerId: user.id,
+            name: p.name,
+            description: p.description,
+            dbType: p.db_type as any,
+            createdAt: new Date(p.created_at).getTime(),
+            updatedAt: new Date(p.updated_at).getTime(),
+            files: (p.files as any[]) ?? [],
+            pinned: p.pinned,
+          }));
+          // Map quick history
+          const mappedQH: QuickConvertResult[] = qHistory.map((e) => ({
+            id: e.id,
+            filename: e.filename,
+            sql: e.sql,
+            stats: e.stats as any,
+            processingTime: e.processingTime,
+            timestamp: e.timestamp,
+            imageUrl: e.imageUrl ?? "",
+          }));
+          useStore.setState({
+            projects: mapped,
+            quickHistory: mappedQH,
+            // Restore real subscription/usage stats from DB
+            subscription: user.subscription ?? useStore.getState().subscription,
+          });
+        } catch {
+          // Non-fatal — user still logs in even if history fails to load
+        }
+      }
+
       toast.success(`Welcome back, ${user.name}!`);
       onNavigate("dashboard");
     } catch (err: any) {

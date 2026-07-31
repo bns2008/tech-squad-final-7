@@ -277,10 +277,11 @@ export default function GeneratePage({ onNavigate }: { onNavigate: (p: string) =
     setSaveOpen(true);
   };
 
-  const confirmSave = () => {
+  const confirmSave = async () => {
     if (!result) return;
     setSaving(true);
 
+    const numericUserId = parseInt(user?.id ?? "", 10);
     let targetProjectId = saveProjectId;
 
     // Create new project if needed
@@ -297,21 +298,40 @@ export default function GeneratePage({ onNavigate }: { onNavigate: (p: string) =
       };
       upsertProject(newProject);
       targetProjectId = newProject.id;
+      // Save new project to DB
+      if (!isNaN(numericUserId)) {
+        try {
+          const { apiSaveProject } = await import("@/lib/api");
+          await apiSaveProject({ user_id: numericUserId, id: newProject.id, name: newProject.name, description: newProject.description, db_type: newProject.dbType, files: [], pinned: false });
+        } catch { /* non-fatal */ }
+      }
     }
 
     // Add as a completed file
     const fileName = `${baseName}.sql`;
-    upsertFile(targetProjectId, ownerId, {
+    const newFile = {
       id: genId(),
       name: fileName,
-      imageUrl: "",          // text-generated, no source image
-      status: "completed",
+      imageUrl: "",
+      status: "completed" as const,
       sql: result.sql,
       uploadedAt: Date.now(),
       completedAt: Date.now(),
       processingTime: result.processingTime,
       stats: result.stats,
-    });
+    };
+    upsertFile(targetProjectId, ownerId, newFile);
+
+    // Sync updated project (with new file) to DB
+    if (!isNaN(numericUserId)) {
+      try {
+        const { apiSaveProject } = await import("@/lib/api");
+        const latestProject = useStore.getState().projects.find(p => p.id === targetProjectId);
+        if (latestProject) {
+          await apiSaveProject({ user_id: numericUserId, id: latestProject.id, name: latestProject.name, description: latestProject.description, db_type: latestProject.dbType, files: latestProject.files, pinned: latestProject.pinned ?? false });
+        }
+      } catch { /* non-fatal */ }
+    }
 
     setSaving(false);
     setSaveOpen(false);

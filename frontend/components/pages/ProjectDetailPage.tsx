@@ -16,6 +16,7 @@ import type { ProjectFile } from "@/lib/types";
 import UpgradeLimitDialog from "@/components/UpgradeLimitDialog";
 import dynamic from "next/dynamic";
 import toast from "react-hot-toast";
+import { apiSaveProject } from "@/lib/api";
 
 const MonacoEditor = dynamic(() => import("@monaco-editor/react").then(m => m.default), {
   ssr: false, loading: () => <div className="p-6 space-y-2">{Array.from({length:10}).map((_,i)=><div key={i} className="skeleton h-4" style={{width:`${40+Math.random()*55}%`}}/>)}</div>
@@ -49,6 +50,19 @@ export default function ProjectDetailPage({ onNavigate }: { onNavigate: (p: stri
   const GEN_STEPS = ["Analyzing…", "Designing entities…", "Mapping relationships…", "Writing SQL…"];
 
   const selectedFile = project?.files.find(f => f.id === selectedFileId);
+
+  // Save current project state (with all files) to PostgreSQL
+  const syncToDb = useCallback(() => {
+    const numericUserId = parseInt(user?.id ?? "", 10);
+    if (!project || isNaN(numericUserId)) return;
+    const latest = useStore.getState().projects.find(p => p.id === project.id);
+    if (!latest) return;
+    apiSaveProject({
+      user_id: numericUserId, id: latest.id, name: latest.name,
+      description: latest.description, db_type: latest.dbType,
+      files: latest.files, pinned: latest.pinned ?? false,
+    }).catch(() => {});
+  }, [project, user]);
 
   const processQueue = useCallback(async () => {
     if (!project) return;
@@ -92,7 +106,8 @@ export default function ProjectDetailPage({ onNavigate }: { onNavigate: (p: stri
       }
     }
     setProcessing(false);
-  }, [project, processing, updateFileStatus]);
+    syncToDb();  // ← persist all file updates to PostgreSQL
+  }, [project, processing, updateFileStatus, syncToDb]);
 
   const onDrop = useCallback((accepted: File[]) => {
     if (!project) return;
@@ -147,6 +162,7 @@ export default function ProjectDetailPage({ onNavigate }: { onNavigate: (p: stri
         completedAt: Date.now(), stats: { tables, relationships: fks, attributes: cols },
         versions: [...prev, { sql: data.sql, generatedAt: Date.now() }],
       });
+      syncToDb();  // ← save to PostgreSQL
       toast.success("Regenerated!");
     } catch (err: any) {
       updateFileStatus(project.id, ownerId, file.id, { status: "failed", error: err.message });
@@ -186,6 +202,7 @@ export default function ProjectDetailPage({ onNavigate }: { onNavigate: (p: stri
       });
       incrementConversions();
       setGenStatus("done");
+      syncToDb();  // ← save to PostgreSQL
       toast.success("Schema generated and saved to project!");
       setTimeout(() => { setGenOpen(false); setGenStatus("idle"); setGenDesc(""); setActiveFolder("sql"); }, 1200);
     } catch (err: any) {

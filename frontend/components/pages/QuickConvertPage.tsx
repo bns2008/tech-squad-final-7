@@ -15,6 +15,7 @@ import type { QuickConvertResult } from "@/lib/types";
 import UpgradeLimitDialog from "@/components/UpgradeLimitDialog";
 import dynamic from "next/dynamic";
 import toast from "react-hot-toast";
+import { apiSaveQuickHistory, apiClearQuickHistory } from "@/lib/api";
 
 const MonacoEditor = dynamic(
   () => import("@monaco-editor/react").then((m) => m.default),
@@ -49,7 +50,7 @@ export default function QuickConvertPage({ onNavigate }: { onNavigate: (p: strin
   const {
     getSubscription, incrementConversions,
     quickHistory, addQuickResult, clearQuickHistory,
-    theme,
+    theme, user,
   } = useStore();
 
   const sub = getSubscription();
@@ -102,6 +103,14 @@ export default function QuickConvertPage({ onNavigate }: { onNavigate: (p: strin
         };
         setQcResult(result); setQcStatus("done");
         addQuickResult(result); incrementConversions();
+        // ── Save to PostgreSQL so history persists across logins ──
+        const numericId = parseInt(user?.id ?? "", 10);
+        if (!isNaN(numericId)) {
+          apiSaveQuickHistory({
+            user_id: numericId, id: result.id, filename: result.filename,
+            sql: result.sql, stats: result.stats, processingTime: result.processingTime,
+          }).catch(() => {});
+        }
         toast.success("Conversion complete!");
       } catch (err: any) {
         stopAnim();
@@ -429,7 +438,11 @@ export default function QuickConvertPage({ onNavigate }: { onNavigate: (p: strin
             <div className="card overflow-hidden">
               <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
                 <h3 className="text-base font-bold text-[var(--text)]">Recent Conversions</h3>
-                <button onClick={clearQuickHistory}
+                <button onClick={() => {
+                  clearQuickHistory();
+                  const numericId = parseInt(user?.id ?? "", 10);
+                  if (!isNaN(numericId)) apiClearQuickHistory(numericId).catch(() => {});
+                }}
                   className="text-sm text-[var(--text-subtle)] hover:text-red-500 transition-colors font-medium">
                   Clear
                 </button>

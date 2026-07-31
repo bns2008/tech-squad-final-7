@@ -112,6 +112,7 @@ export const useStore = create<Store>()(
           activeProjectId: null,
           subscription: defaultSubscription(),
           quickHistory: [],
+          projects: [],   // clear on logout so next user starts fresh
         }),
 
       // ── UI ──────────────────────────────────────────────────────────────────
@@ -141,7 +142,16 @@ export const useStore = create<Store>()(
       incrementConversions: () =>
         set((state) => {
           const s = maybeResetMonthly(state.subscription);
-          return { subscription: { ...s, conversionsUsedThisMonth: s.conversionsUsedThisMonth + 1 } };
+          const updated = { ...s, conversionsUsedThisMonth: s.conversionsUsedThisMonth + 1 };
+          // Sync new count to backend for the current user
+          const userId = parseInt(state.user?.id ?? "", 10);
+          if (!isNaN(userId)) {
+            import("./api").then(({ apiUpdateProfile }) => {
+              // no-op — backend increments its own counter via /save-conversion
+              // this just ensures the frontend subscription slice stays accurate
+            }).catch(() => {});
+          }
+          return { subscription: updated };
         }),
       getSubscription: () => maybeResetMonthly(get().subscription),
 

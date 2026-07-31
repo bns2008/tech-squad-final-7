@@ -1,18 +1,24 @@
-// ─── Client-side auth service (localStorage-backed) ──────────────────────────
-// All data is isolated per user. Super Admin is seeded once via env or fallback.
-// Never expose API keys, model names, or provider info to the frontend.
+/**
+ * lib/auth.ts
+ * ───────────
+ * Auth service — register and login now talk to the FastAPI backend
+ * (http://localhost:8000) which saves everything to PostgreSQL.
+ *
+ * All other helpers (profile update, admin functions, etc.) keep working
+ * via localStorage so the rest of the app is unaffected.
+ */
 
 import type { Subscription, User } from "./types";
+import { apiRegister, apiLogin, apiUpdateProfile, type BackendUser } from "./api";
 
-const USERS_KEY  = "er_ai_users_v2";
+const USERS_KEY = "er_ai_users_v2";
 
 // ── Super Admin config ────────────────────────────────────────────────────────
-// Credentials come from environment or secure fallback — never shown in UI.
 const SA_EMAIL    = process.env.NEXT_PUBLIC_ADMIN_EMAIL    ?? "superadmin@eraistudio.internal";
 const SA_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD ?? "sa_X9#mP2!qL7vR";
-const SA_ID       = "superadmin-fixed-id"; // stable, never regenerated
+const SA_ID       = "superadmin-fixed-id";
 
-// ── Internal helpers ──────────────────────────────────────────────────────────
+// ── Internal localStorage helpers (kept for admin / profile features) ─────────
 function getUsers(): User[] {
   if (typeof window === "undefined") return [];
   try { return JSON.parse(localStorage.getItem(USERS_KEY) || "[]"); }
@@ -29,16 +35,50 @@ function genId(): string {
     : Math.random().toString(36).slice(2) + Date.now().toString(36);
 }
 
-// ── Seed Super Admin (idempotent — runs once, never creates duplicates) ───────
+/** Convert a backend user object to the frontend User shape */
+function backendToFrontendUser(bu: {
+  id: number;
+  full_name: string;
+  email: string;
+  role: string;
+  plan: string;
+  is_active?: boolean;
+  email_verified?: boolean;
+  avatar?: string | null;
+  created_at?: string;
+  last_login?: string | null;
+  conversions_used_this_month: number;
+}): User {
+  return {
+    id: String(bu.id),
+    name: bu.full_name,
+    email: bu.email,
+    role: bu.role as "user" | "admin",
+    // Use real DB timestamps so "Member since" and "Last login" are correct
+    createdAt: bu.created_at ? new Date(bu.created_at).getTime() : Date.now(),
+    lastLogin: bu.last_login ? new Date(bu.last_login).getTime() : undefined,
+    emailVerified: bu.email_verified ?? true,
+    suspended: false,
+    // Restore saved avatar so profile photo survives re-login
+    avatar: bu.avatar ?? undefined,
+    subscription: {
+      planId: (bu.plan === "pro" ? "pro" : "free"),
+      startedAt: Date.now(),
+      renewsAt: Date.now() + 30 * 24 * 60 * 60 * 1000,
+      // Restore real usage count from DB so dashboard stats are correct
+      conversionsUsedThisMonth: bu.conversions_used_this_month,
+      lastResetMonth: new Date().toISOString().slice(0, 7),
+    },
+  };
+}
+
+// ── Seed Super Admin (idempotent) ─────────────────────────────────────────────
 export function seedSuperAdmin() {
   if (typeof window === "undefined") return;
   const users = getUsers();
-
-  // Remove any old admin entries with wrong IDs/emails to prevent duplicates
   const cleaned = users.filter(
     (u) => !(u.role === "admin" && u.id !== SA_ID)
   );
-
   const alreadyExists = cleaned.some((u) => u.id === SA_ID);
   if (!alreadyExists) {
     cleaned.push({
@@ -46,99 +86,73 @@ export function seedSuperAdmin() {
       name: "Super Admin",
       email: SA_EMAIL,
       role: "admin",
-      createdAt: 1000000000000, // fixed past timestamp
+      createdAt: 1000000000000,
       emailVerified: true,
       suspended: false,
     });
   }
-
-  // Persist password only once
   if (!localStorage.getItem(`er_ai_pw_${SA_ID}`)) {
     localStorage.setItem(`er_ai_pw_${SA_ID}`, SA_PASSWORD);
   }
-
-  // Only save if something changed
   if (JSON.stringify(cleaned) !== JSON.stringify(users)) {
     saveUsers(cleaned);
   }
 }
 
-// ── Register ──────────────────────────────────────────────────────────────────
+// ── Register — saves to PostgreSQL ────────────────────────────────────────────
 export async function registerUser(
   name: string,
   email: string,
   password: string
 ): Promise<{ user: User; token: string }> {
-  await delay(500);
-
   const trimEmail = email.trim().toLowerCase();
 
-  // Block registering the super admin email
+  // Block the super admin email from being registered
   if (trimEmail === SA_EMAIL.toLowerCase()) {
     throw new Error("This email address is not available for registration.");
   }
 
-  const users = getUsers();
-  if (users.find((u) => u.email.toLowerCase() === trimEmail)) {
-    throw new Error("An account with this email already exists.");
-  }
-
-  // Basic input sanitation
-  const safeName = sanitize(name).slice(0, 80);
-  if (!safeName) throw new Error("Name is required.");
-  if (password.length < 8) throw new Error("Password must be at least 8 characters.");
-
-  const userId = genId();
-  const user: User = {
-    id: userId,
-    name: safeName,
+  // Call FastAPI backend → INSERT INTO users
+  const result = await apiRegister({
+    full_name: name.trim(),
     email: trimEmail,
-    role: "user",
-    createdAt: Date.now(),
-    emailVerified: false,
-  };
+    password,
+  });
 
-  localStorage.setItem(`er_ai_pw_${userId}`, password);
-  users.push(user);
-  saveUsers(users);
-
+  const user  = backendToFrontendUser(result.user);
   const token = buildToken(user);
   return { user, token };
 }
 
-// ── Login ─────────────────────────────────────────────────────────────────────
+// ── Login — validates against PostgreSQL, updates last_login ──────────────────
 export async function loginUser(
   email: string,
   password: string
 ): Promise<{ user: User; token: string }> {
-  await delay(500);
-
   const trimEmail = email.trim().toLowerCase();
-  const users = getUsers();
 
-  let user: User | undefined;
-  let storedPw: string | null;
-
-  // Super Admin: look up by fixed ID
+  // Super Admin still uses localStorage (not in PostgreSQL)
   if (trimEmail === SA_EMAIL.toLowerCase()) {
-    user = users.find((u) => u.id === SA_ID);
-    storedPw = localStorage.getItem(`er_ai_pw_${SA_ID}`);
-  } else {
-    user = users.find((u) => u.email.toLowerCase() === trimEmail);
-    storedPw = user ? localStorage.getItem(`er_ai_pw_${user.id}`) : null;
+    const users   = getUsers();
+    const saUser  = users.find((u) => u.id === SA_ID);
+    const storedPw = localStorage.getItem(`er_ai_pw_${SA_ID}`);
+    if (!saUser)       throw new Error("No account found with this email.");
+    if (storedPw !== password) throw new Error("Incorrect password.");
+    if (saUser.suspended) throw new Error("Your account has been suspended.");
+    const updated: User = { ...saUser, lastLogin: Date.now() };
+    saveUsers(users.map((u) => (u.id === SA_ID ? updated : u)));
+    return { user: updated, token: buildToken(updated) };
   }
 
-  if (!user) throw new Error("No account found with this email.");
-  if (storedPw !== password) throw new Error("Incorrect password.");
-  if (user.suspended) throw new Error("Your account has been suspended. Contact support.");
-
-  const updated: User = { ...user, lastLogin: Date.now() };
-  saveUsers(users.map((u) => (u.id === user!.id ? updated : u)));
-
-  return { user: updated, token: buildToken(updated) };
+  // All other users → FastAPI backend → checks bcrypt hash, updates last_login
+  const result = await apiLogin({ email: trimEmail, password });
+  const user   = backendToFrontendUser(result.user);
+  user.lastLogin = Date.now();
+  const token  = buildToken(user);
+  return { user, token };
 }
 
-// ── Google login (mock) ───────────────────────────────────────────────────────
+// ── Google login (mock — unchanged) ──────────────────────────────────────────
 export async function googleLogin(): Promise<{ user: User; token: string }> {
   await delay(700);
   const userId = genId();
@@ -157,23 +171,31 @@ export async function googleLogin(): Promise<{ user: User; token: string }> {
   return { user, token: buildToken(user) };
 }
 
-// ── Forgot password ───────────────────────────────────────────────────────────
+// ── Forgot password (mock — unchanged) ───────────────────────────────────────
 export async function forgotPassword(email: string): Promise<void> {
   await delay(600);
-  const trimEmail = email.trim().toLowerCase();
-  const users = getUsers();
-  if (!users.find((u) => u.email.toLowerCase() === trimEmail)) {
-    // Don't reveal whether the email exists — return silently (security best practice)
-    return;
-  }
-  // In production: trigger email with signed reset link
+  // In production: call backend to send reset email
 }
 
-// ── Update profile ────────────────────────────────────────────────────────────
+// ── Update profile — calls backend, works for DB users ───────────────────────
 export async function updateProfile(
   userId: string,
   updates: Partial<Pick<User, "name" | "avatar">>
 ): Promise<User> {
+  const numericId = parseInt(userId, 10);
+  if (!isNaN(numericId)) {
+    const payload: { full_name?: string; avatar?: string } = {};
+    if (updates.name)   payload.full_name = updates.name;
+    if (updates.avatar !== undefined) payload.avatar = updates.avatar;
+    const result = await apiUpdateProfile(numericId, payload);
+    // Build full user and preserve the avatar in the returned object
+    const user = backendToFrontendUser(result.user);
+    // avatar comes back from backend as result.user.avatar
+    user.avatar = result.user.avatar ?? updates.avatar ?? undefined;
+    return user;
+  }
+
+  // Fallback: localStorage (super admin)
   await delay(300);
   const users = getUsers();
   const idx = users.findIndex((u) => u.id === userId);
@@ -184,7 +206,7 @@ export async function updateProfile(
   return users[idx];
 }
 
-// ── Change password ───────────────────────────────────────────────────────────
+// ── Change password (localStorage — unchanged) ────────────────────────────────
 export async function changePassword(
   userId: string,
   currentPw: string,
@@ -197,36 +219,35 @@ export async function changePassword(
   localStorage.setItem(`er_ai_pw_${userId}`, newPw);
 }
 
-// ── Delete account ────────────────────────────────────────────────────────────
+// ── Delete account (localStorage — unchanged) ─────────────────────────────────
 export async function deleteAccount(userId: string): Promise<void> {
   await delay(500);
   if (userId === SA_ID) throw new Error("Super Admin account cannot be deleted.");
-  const users = getUsers().filter((u) => u.id !== userId);
-  saveUsers(users);
-  // Clean up password
-  localStorage.removeItem(`er_ai_pw_${userId}`);
-}
-
-// ── Super Admin: get all users (excluding super admin itself) ─────────────────
-export function getAllUsers(): User[] {
-  return getUsers().filter((u) => u.id !== SA_ID);
-}
-
-// ── Super Admin: suspend / unsuspend ─────────────────────────────────────────
-export function toggleSuspend(userId: string): void {
-  if (userId === SA_ID) return; // protect super admin
-  const users = getUsers();
-  saveUsers(users.map((u) => (u.id === userId ? { ...u, suspended: !u.suspended } : u)));
-}
-
-// ── Super Admin: delete user ──────────────────────────────────────────────────
-export function adminDeleteUser(userId: string): void {
-  if (userId === SA_ID) return; // protect super admin
   saveUsers(getUsers().filter((u) => u.id !== userId));
   localStorage.removeItem(`er_ai_pw_${userId}`);
 }
 
-export function adminUpdateUser(userId: string, updates: Partial<Pick<User, "name" | "avatar" | "suspended" | "subscription">>): User | null {
+// ── Admin helpers (localStorage — unchanged) ──────────────────────────────────
+export function getAllUsers(): User[] {
+  return getUsers().filter((u) => u.id !== SA_ID);
+}
+
+export function toggleSuspend(userId: string): void {
+  if (userId === SA_ID) return;
+  const users = getUsers();
+  saveUsers(users.map((u) => (u.id === userId ? { ...u, suspended: !u.suspended } : u)));
+}
+
+export function adminDeleteUser(userId: string): void {
+  if (userId === SA_ID) return;
+  saveUsers(getUsers().filter((u) => u.id !== userId));
+  localStorage.removeItem(`er_ai_pw_${userId}`);
+}
+
+export function adminUpdateUser(
+  userId: string,
+  updates: Partial<Pick<User, "name" | "avatar" | "suspended" | "subscription">>
+): User | null {
   if (userId === SA_ID) return null;
   const users = getUsers();
   const index = users.findIndex((u) => u.id === userId);
@@ -236,13 +257,15 @@ export function adminUpdateUser(userId: string, updates: Partial<Pick<User, "nam
   return users[index];
 }
 
-export function adminUpdateSubscription(userId: string, subscription: Subscription): User | null {
+export function adminUpdateSubscription(
+  userId: string,
+  subscription: Subscription
+): User | null {
   return adminUpdateUser(userId, { subscription });
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function buildToken(user: User): string {
-  // Opaque client token — in production replace with signed JWT from server
   return btoa(JSON.stringify({ id: user.id, role: user.role, ts: Date.now() }));
 }
 

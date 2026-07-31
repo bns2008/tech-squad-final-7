@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import type { Project, DBType } from "@/lib/types";
 import UpgradeLimitDialog from "@/components/UpgradeLimitDialog";
 import toast from "react-hot-toast";
+import { apiSaveProject, apiDeleteProject } from "@/lib/api";
 
 const DB_TYPES: { id: DBType; label: string }[] = [
   { id: "postgresql", label: "PostgreSQL" },
@@ -69,27 +70,42 @@ export default function ProjectsPage({ onNavigate }: { onNavigate: (p: string) =
     setSelected(new Set());
   };
 
-  const bulkDelete = () => {
-    selected.forEach(id => deleteProject(id, ownerId));
+  const bulkDelete = async () => {
+    const numericId = parseInt(user?.id ?? "", 10);
+    selected.forEach(id => {
+      deleteProject(id, ownerId);
+      if (!isNaN(numericId)) apiDeleteProject(numericId, id).catch(() => {});
+    });
     const count = selected.size;
-    exitSelectMode();
-    setConfirmBulk(false);
+    exitSelectMode(); setConfirmBulk(false);
     toast.success(`${count} project${count !== 1 ? "s" : ""} deleted`);
   };
 
+  // ── Helper: save project to DB ────────────────────────────────────────────
+  const syncProject = async (p: Project) => {
+    const numericId = parseInt(user?.id ?? "", 10);
+    if (isNaN(numericId)) return;
+    try {
+      await apiSaveProject({
+        user_id: numericId, id: p.id, name: p.name,
+        description: p.description, db_type: p.dbType,
+        files: p.files, pinned: p.pinned ?? false,
+      });
+    } catch { /* non-fatal */ }
+  };
+
   // ── Single project actions ────────────────────────────────────────────────
-  const createProject = () => {
+  const createProject = async () => {
     if (!form.name.trim()) { toast.error("Project name is required"); return; }
     if (!canCreateProject(getSubscription(), myProjects.length)) {
-      setLimitOpen(true);
-      setShowCreate(false);
-      return;
+      setLimitOpen(true); setShowCreate(false); return;
     }
     const p: Project = {
       id: genId(), ownerId, name: form.name.trim(), description: form.description,
       dbType: form.dbType, createdAt: Date.now(), updatedAt: Date.now(), files: [],
     };
     upsertProject(p);
+    await syncProject(p);          // ← save to PostgreSQL
     setActiveProject(p.id);
     setShowCreate(false);
     setForm({ name: "", description: "", dbType: "postgresql" });
@@ -97,18 +113,28 @@ export default function ProjectsPage({ onNavigate }: { onNavigate: (p: string) =
     onNavigate("project-detail");
   };
 
-  const duplicate = (p: Project) => {
+  const duplicate = async (p: Project) => {
     const dup: Project = { ...p, id: genId(), ownerId, name: `${p.name} (Copy)`, createdAt: Date.now(), updatedAt: Date.now(), files: [] };
     upsertProject(dup);
+    await syncProject(dup);        // ← save to PostgreSQL
     toast.success("Project duplicated");
   };
 
   const startRename = (p: Project) => { setRenaming(p.id); setRenameVal(p.name); setMenuOpen(null); };
-  const confirmRename = (p: Project) => {
-    if (renameVal.trim()) { upsertProject({ ...p, name: renameVal.trim(), updatedAt: Date.now() }); toast.success("Renamed"); }
+  const confirmRename = async (p: Project) => {
+    if (renameVal.trim()) {
+      const updated = { ...p, name: renameVal.trim(), updatedAt: Date.now() };
+      upsertProject(updated);
+      await syncProject(updated);  // ← save to PostgreSQL
+      toast.success("Renamed");
+    }
     setRenaming(null);
   };
-  const togglePin = (p: Project) => upsertProject({ ...p, pinned: !p.pinned, updatedAt: Date.now() });
+  const togglePin = async (p: Project) => {
+    const updated = { ...p, pinned: !p.pinned, updatedAt: Date.now() };
+    upsertProject(updated);
+    await syncProject(updated);    // ← save to PostgreSQL
+  };
 
   const inp = "w-full py-2.5 px-4 text-sm rounded-xl border border-[var(--border)] bg-[var(--card)] text-[var(--text)] placeholder:text-[var(--text-subtle)] focus:outline-none focus:ring-2 focus:ring-primary-500/25 focus:border-primary-500 transition-all";
 
@@ -252,7 +278,12 @@ export default function ProjectsPage({ onNavigate }: { onNavigate: (p: string) =
                           { icon: Edit2,  label: "Rename",                  action: () => startRename(p) },
                           { icon: Copy,   label: "Duplicate",               action: () => { duplicate(p); setMenuOpen(null); } },
                           { icon: Pin,    label: p.pinned ? "Unpin" : "Pin", action: () => { togglePin(p); setMenuOpen(null); } },
-                          { icon: Trash2, label: "Delete",                   action: () => { deleteProject(p.id, ownerId); toast.success("Deleted"); setMenuOpen(null); }, danger: true },
+                          { icon: Trash2, label: "Delete", action: () => {
+                            const numericId = parseInt(user?.id ?? "", 10);
+                            deleteProject(p.id, ownerId);
+                            if (!isNaN(numericId)) apiDeleteProject(numericId, p.id).catch(() => {});
+                            toast.success("Deleted"); setMenuOpen(null);
+                          }, danger: true },
                         ].map(({ icon: Ic, label, action, danger }) => (
                           <button key={label} onClick={action}
                             className={cn("w-full flex items-center gap-2.5 px-4 py-2 text-sm hover:bg-[var(--surface)] transition-colors",
