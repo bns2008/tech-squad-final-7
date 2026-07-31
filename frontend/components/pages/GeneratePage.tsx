@@ -6,7 +6,7 @@ import {
   Copy, Download, RefreshCw, CheckCircle,
   AlertTriangle, ArrowRight, FileText, FileJson,
   Sparkles, ChevronDown, ChevronUp, Lightbulb,
-  FolderOpen, Plus, X, Save,
+  FolderOpen, Plus, X, Save, GitFork, Share2, Layers,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { parseSQLStats, downloadText, downloadJSON, genId, formatTime, cn } from "@/lib/utils";
@@ -29,6 +29,54 @@ const MonacoEditor = dynamic(
     ),
   }
 );
+
+const DIAGRAM_TYPES = [
+  {
+    value: "er",
+    label: "ER Diagram",
+    icon: Table2,
+    desc: "Entity-relationship diagram with tables & foreign keys",
+    color: "text-primary-600",
+    bg: "bg-primary-50 dark:bg-primary-900/20",
+    border: "border-primary-400",
+  },
+  {
+    value: "flowchart",
+    label: "Flowchart",
+    icon: GitFork,
+    desc: "Process flow with decisions and steps",
+    color: "text-emerald-600",
+    bg: "bg-emerald-50 dark:bg-emerald-900/20",
+    border: "border-emerald-400",
+  },
+  {
+    value: "dfd0",
+    label: "DFD Level 0",
+    icon: Share2,
+    desc: "Context diagram — system vs external entities",
+    color: "text-orange-600",
+    bg: "bg-orange-50 dark:bg-orange-900/20",
+    border: "border-orange-400",
+  },
+  {
+    value: "dfd1",
+    label: "DFD Level 1",
+    icon: Layers,
+    desc: "Decomposed processes, data stores & flows",
+    color: "text-violet-600",
+    bg: "bg-violet-50 dark:bg-violet-900/20",
+    border: "border-violet-400",
+  },
+  {
+    value: "class",
+    label: "Class Diagram",
+    icon: GitBranch,
+    desc: "OOP classes with attributes, methods & relationships",
+    color: "text-sky-600",
+    bg: "bg-sky-50 dark:bg-sky-900/20",
+    border: "border-sky-400",
+  },
+];
 
 const DB_OPTIONS = [
   { value: "postgresql", label: "PostgreSQL", short: "PG",  color: "text-blue-500",   border: "border-blue-400",   bg: "bg-blue-50 dark:bg-blue-900/20"    },
@@ -75,6 +123,7 @@ export default function GeneratePage({ onNavigate }: { onNavigate: (p: string) =
 
   const [description, setDescription]   = useState("");
   const [selectedDb, setSelectedDb]     = useState("postgresql");
+  const [diagramType, setDiagramType]   = useState("er");
   const [status, setStatus]             = useState<"idle" | "processing" | "done" | "error">("idle");
   const [result, setResult]             = useState<GenerateResult | null>(null);
   const [error, setError]               = useState("");
@@ -96,6 +145,25 @@ export default function GeneratePage({ onNavigate }: { onNavigate: (p: string) =
   const activeDb = DB_OPTIONS.find((d) => d.value === selectedDb) ?? DB_OPTIONS[0];
   const left = conversionsLeft(sub);
 
+  // ── Sanitize Mermaid syntax before rendering ──────────────────────────────
+  function sanitizeMermaid(raw: string): string {
+    return raw
+      // Normalize unicode arrows to -->
+      .replace(/—>/g, "-->")
+      .replace(/→/g, "-->")
+      .replace(/=>/g, "-->")
+      // Remove colons inside node labels e.g. [Start: Foo] → [Start Foo]
+      .replace(/\[([^\]]*):([^\]]*)\]/g, (_, a, b) => `[${a.trim()} ${b.trim()}]`)
+      // Remove colons inside round parens (process nodes) e.g. (P1: Process) → (P1 Process)
+      .replace(/\(([^)]*):([^)]*)\)/g, (_, a, b) => `(${a.trim()} ${b.trim()})`)
+      // Fix bare arrow labels: -->|Yes| → -->|Yes|  (already ok, but clean spaces)
+      .replace(/-->\s*\|/g, "-->|")
+      // Ensure flowchart keyword is lowercase
+      .replace(/^Flowchart\s/im, "flowchart ")
+      // Trim
+      .trim();
+  }
+
   // ── Render Mermaid diagram ──────────────────────────────────────────────────
   useEffect(() => {
     if (!result?.mermaid) return;
@@ -103,15 +171,19 @@ export default function GeneratePage({ onNavigate }: { onNavigate: (p: string) =
     setMermaidError(false);
     setMermaidSvg("");
 
+    const cleaned = sanitizeMermaid(result.mermaid);
+
     import("mermaid").then((m) => {
       const mermaid = m.default;
       mermaid.initialize({
         startOnLoad: false,
         theme: theme === "dark" ? "dark" : "default",
         er: { diagramPadding: 20, layoutDirection: "TB", minEntityWidth: 100 },
+        flowchart: { curve: "basis", padding: 20 },
+        securityLevel: "loose",
       });
       const id = `mermaid-${genId()}`;
-      mermaid.render(id, result.mermaid)
+      mermaid.render(id, cleaned)
         .then(({ svg }) => {
           if (!cancelled) setMermaidSvg(svg);
         })
@@ -149,7 +221,7 @@ export default function GeneratePage({ onNavigate }: { onNavigate: (p: string) =
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ description: description.trim(), dialect: selectedDb }),
+        body: JSON.stringify({ description: description.trim(), dialect: selectedDb, diagramType }),
       });
       const data = await res.json();
       stopAnim();
@@ -179,7 +251,7 @@ export default function GeneratePage({ onNavigate }: { onNavigate: (p: string) =
       setStatus("error");
       toast.error(err.message || "Generation failed");
     }
-  }, [description, selectedDb, sub, runStepAnimation, incrementConversions]);
+  }, [description, selectedDb, diagramType, sub, runStepAnimation, incrementConversions]);
 
   const reset = () => {
     setStatus("idle");
@@ -275,6 +347,38 @@ export default function GeneratePage({ onNavigate }: { onNavigate: (p: string) =
             Upgrade to Pro <ArrowRight size={14} />
           </button>
         )}
+      </div>
+
+      {/* ── Diagram Type Selector ── */}
+      <div className="mb-6">
+        <div className="flex items-center gap-2 mb-3">
+          <Layers size={15} className="text-[var(--text-muted)]" />
+          <span className="text-sm font-semibold text-[var(--text-muted)] uppercase tracking-widest">
+            Diagram Type
+          </span>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+          {DIAGRAM_TYPES.map((dt) => {
+            const Icon = dt.icon;
+            const active = diagramType === dt.value;
+            return (
+              <button
+                key={dt.value}
+                onClick={() => setDiagramType(dt.value)}
+                className={cn(
+                  "flex flex-col items-start gap-1.5 px-3.5 py-3 rounded-xl border-2 text-left transition-all",
+                  active
+                    ? `${dt.bg} ${dt.color} ${dt.border} shadow-sm`
+                    : "border-[var(--border)] text-[var(--text-muted)] hover:border-[var(--text-subtle)] hover:bg-[var(--surface)]"
+                )}
+              >
+                <Icon size={16} className={active ? dt.color : "text-[var(--text-subtle)]"} />
+                <span className="text-xs font-bold leading-tight">{dt.label}</span>
+                <span className="text-[10px] leading-tight opacity-70 hidden sm:block">{dt.desc}</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* ── Database Selector ── */}
@@ -421,6 +525,9 @@ export default function GeneratePage({ onNavigate }: { onNavigate: (p: string) =
               <p className="text-sm text-[var(--text-muted)] max-w-xs line-clamp-2">"{description}"</p>
               <p className="text-sm text-[var(--text-subtle)] mt-1">
                 Generating <span className={cn("font-semibold", activeDb.color)}>{activeDb.label}</span> schema
+                {" · "}<span className="font-semibold text-[var(--text-muted)]">
+                  {DIAGRAM_TYPES.find(d => d.value === diagramType)?.label ?? "ER Diagram"}
+                </span>
               </p>
             </div>
             <div className="flex items-center gap-3">
@@ -546,7 +653,9 @@ export default function GeneratePage({ onNavigate }: { onNavigate: (p: string) =
                         : "text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--surface)]"
                     )}
                   >
-                    {tab === "diagram" ? "ER Diagram" : "SQL DDL"}
+                    {tab === "diagram"
+                      ? (DIAGRAM_TYPES.find(d => d.value === diagramType)?.label ?? "ER Diagram")
+                      : "SQL DDL"}
                   </button>
                 ))}
               </div>

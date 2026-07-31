@@ -2,7 +2,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, FolderOpen, History, Settings, Shield,
-  ChevronLeft, ChevronRight, Database, LogOut, Plus, Zap, Sparkles, CreditCard, UserRound, X, Wand2, ArrowRightLeft
+  ChevronLeft, ChevronRight, Database, LogOut, Plus, Sparkles, CreditCard, UserRound, X, Wand2, ArrowRightLeft, Wrench, ChevronDown
 } from "lucide-react";
 import { useState } from "react";
 import { useStore } from "@/lib/store";
@@ -13,24 +13,36 @@ interface SidebarProps {
   onNavigate: (p: string) => void;
 }
 
+const toolsItems = [
+  { id: "quick-convert", label: "Quick Convert", icon: Sparkles,     badge: "Image → SQL",  badgeColor: "text-primary-500 bg-primary-50 dark:bg-primary-900/30" },
+  { id: "generate",      label: "Generate",      icon: Wand2,         badge: "Text → SQL",   badgeColor: "text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30" },
+  { id: "migrate",       label: "Migrator",      icon: ArrowRightLeft, badge: "SQL → SQL",   badgeColor: "text-violet-600 bg-violet-50 dark:bg-violet-900/30" },
+];
+
 const mainNav = [
-  { id: "dashboard",     label: "Dashboard",    icon: LayoutDashboard },
-  { id: "quick-convert", label: "Quick Convert", icon: Sparkles },
-  { id: "generate",      label: "Generate",     icon: Wand2 },
-  { id: "migrate",       label: "Migrator",     icon: ArrowRightLeft },
-  { id: "projects",      label: "Projects",     icon: FolderOpen },
-  { id: "history",       label: "History",      icon: History },
-  { id: "pricing",       label: "Pricing",      icon: CreditCard },
-  { id: "profile",       label: "Profile",      icon: UserRound },
-  { id: "settings",      label: "Settings",     icon: Settings },
+  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { id: "projects",  label: "Projects",  icon: FolderOpen },
+  { id: "history",   label: "History",   icon: History },
+  { id: "pricing",   label: "Pricing",   icon: CreditCard },
+  { id: "profile",   label: "Profile",   icon: UserRound },
 ];
 
 export default function Sidebar({ page, onNavigate }: SidebarProps) {
   const { user, sidebarCollapsed, setSidebarCollapsed, logout, projects: allProjects } = useStore();
   const [mobileOpen, setMobileOpen] = useState(true);
+  const [toolsOpen, setToolsOpen] = useState(
+    ["quick-convert", "generate", "migrate"].includes(page)
+  );
   const projects = allProjects.filter(p => p.ownerId === (user?.id ?? ""));
   const isAdmin = user?.role === "admin";
   const width = sidebarCollapsed ? 64 : 220;
+
+  const isToolPage = ["quick-convert", "generate", "migrate"].includes(page);
+
+  const handleNavigate = (id: string) => {
+    onNavigate(id);
+    setMobileOpen(false);
+  };
 
   return (
     <motion.aside
@@ -62,7 +74,7 @@ export default function Sidebar({ page, onNavigate }: SidebarProps) {
       <nav className="flex-1 px-2 py-3 space-y-0.5 overflow-y-auto overflow-x-hidden">
         {/* New Project quick-action */}
         <button
-          onClick={() => { onNavigate("projects"); setMobileOpen(false); }}
+          onClick={() => handleNavigate("projects")}
           title="New Project"
           className={cn(
             "w-full flex items-center gap-3 px-2.5 py-2.5 rounded-xl mb-2 text-sm font-semibold transition-all",
@@ -73,8 +85,96 @@ export default function Sidebar({ page, onNavigate }: SidebarProps) {
           {!sidebarCollapsed && <span>New Project</span>}
         </button>
 
-        {mainNav.map(({ id, label, icon: Icon }) => (
-          <button key={`${id}-${label}`} onClick={() => { onNavigate(id); setMobileOpen(false); }} title={label}
+        {/* Dashboard */}
+        <button
+          onClick={() => handleNavigate("dashboard")}
+          title="Dashboard"
+          className={cn("w-full flex items-center gap-3 px-2.5 py-2.5 rounded-xl text-sm font-medium transition-all",
+            page === "dashboard"
+              ? "bg-[var(--primary-light)] text-primary-600"
+              : "text-[var(--text-muted)] hover:bg-[var(--surface)] hover:text-[var(--text)]"
+          )}
+        >
+          <LayoutDashboard size={16} className="flex-shrink-0" />
+          {!sidebarCollapsed && <span className="truncate">Dashboard</span>}
+        </button>
+
+        {/* ── Tools accordion ── */}
+        <div>
+          <button
+            onClick={() => {
+              if (sidebarCollapsed) {
+                // expand sidebar first, then open tools
+                setSidebarCollapsed(false);
+                setToolsOpen(true);
+              } else {
+                setToolsOpen((o) => !o);
+              }
+            }}
+            title="Tools"
+            className={cn(
+              "w-full flex items-center gap-3 px-2.5 py-2.5 rounded-xl text-sm font-medium transition-all",
+              isToolPage
+                ? "bg-[var(--primary-light)] text-primary-600"
+                : "text-[var(--text-muted)] hover:bg-[var(--surface)] hover:text-[var(--text)]"
+            )}
+          >
+            <Wrench size={16} className="flex-shrink-0" />
+            {!sidebarCollapsed && (
+              <>
+                <span className="flex-1 truncate text-left">Tools</span>
+                <motion.span
+                  animate={{ rotate: toolsOpen ? 180 : 0 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <ChevronDown size={13} />
+                </motion.span>
+              </>
+            )}
+          </button>
+
+          <AnimatePresence initial={false}>
+            {toolsOpen && !sidebarCollapsed && (
+              <motion.div
+                key="tools-dropdown"
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+                className="overflow-hidden"
+              >
+                <div className="mt-1 ml-3 pl-3 border-l-2 border-[var(--border)] space-y-0.5 pb-1">
+                  {toolsItems.map(({ id, label, icon: Icon, badge, badgeColor }) => (
+                    <button
+                      key={id}
+                      onClick={() => handleNavigate(id)}
+                      className={cn(
+                        "w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs font-medium transition-all group",
+                        page === id
+                          ? "bg-[var(--primary-light)] text-primary-600"
+                          : "text-[var(--text-muted)] hover:bg-[var(--surface)] hover:text-[var(--text)]"
+                      )}
+                    >
+                      <Icon size={14} className="flex-shrink-0" />
+                      <span className="flex-1 truncate text-left">{label}</span>
+                      <span className={cn(
+                        "text-[9px] font-semibold px-1.5 py-0.5 rounded hidden group-hover:inline-block",
+                        page === id ? "inline-block" : "",
+                        badgeColor
+                      )}>
+                        {badge}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* Rest of nav */}
+        {mainNav.filter(n => n.id !== "dashboard").map(({ id, label, icon: Icon }) => (
+          <button key={`${id}-${label}`} onClick={() => handleNavigate(id)} title={label}
             className={cn("w-full flex items-center gap-3 px-2.5 py-2.5 rounded-xl text-sm font-medium transition-all",
               page === id
                 ? "bg-[var(--primary-light)] text-primary-600"
@@ -99,7 +199,7 @@ export default function Sidebar({ page, onNavigate }: SidebarProps) {
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-subtle)] px-2.5">Admin</p>
               )}
             </div>
-            <button onClick={() => { onNavigate("admin"); setMobileOpen(false); }} title="Admin Panel"
+            <button onClick={() => handleNavigate("admin")} title="Admin Panel"
               className={cn("w-full flex items-center gap-3 px-2.5 py-2.5 rounded-xl text-sm font-medium transition-all",
                 page === "admin"
                   ? "bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400"
@@ -118,7 +218,7 @@ export default function Sidebar({ page, onNavigate }: SidebarProps) {
             <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-subtle)] px-2.5 mb-1.5">Recent</p>
             {projects.slice(0, 4).map((p) => (
               <button key={p.id}
-                onClick={() => { useStore.getState().setActiveProject(p.id); onNavigate("project-detail"); setMobileOpen(false); }}
+                onClick={() => { useStore.getState().setActiveProject(p.id); handleNavigate("project-detail"); }}
                 className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs text-[var(--text-muted)] hover:bg-[var(--surface)] hover:text-[var(--text)] transition-all"
               >
                 <div className="w-5 h-5 rounded bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center flex-shrink-0">
@@ -131,36 +231,17 @@ export default function Sidebar({ page, onNavigate }: SidebarProps) {
         )}
       </nav>
 
-      {/* Upgrade banner (not admin) */}
-      {!isAdmin && !sidebarCollapsed && (
-        <div className="mx-3 mb-3 rounded-xl bg-gradient-to-br from-primary-600 to-primary-800 p-3.5 text-white">
-          <div className="flex items-center gap-1.5 mb-1">
-            <Zap size={13} className="text-yellow-300" />
-            <span className="font-bold text-xs">Upgrade to Pro</span>
-          </div>
-          <p className="text-[10px] text-white/70 mb-2.5">Unlimited projects & exports</p>
-          <button onClick={() => onNavigate("pricing")} className="w-full bg-white text-primary-700 font-semibold text-xs py-1.5 rounded-lg hover:bg-white/90 transition-colors">
-            Upgrade Now
-          </button>
-        </div>
-      )}
-
       {/* Bottom: profile + collapse */}
       <div className="border-t border-[var(--border)] p-2 space-y-1 flex-shrink-0">
-        {/* Profile */}
-        <button onClick={() => onNavigate("profile")}
-          className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl hover:bg-[var(--surface)] transition-all">
-          <div className="w-7 h-7 rounded-full overflow-hidden bg-primary-100 dark:bg-primary-900/40 flex items-center justify-center flex-shrink-0 text-xs font-bold text-primary-600">
-            {user?.avatar
-              ? <img src={user.avatar} alt={user?.name ?? ""} className="w-full h-full object-cover" />
-              : (user ? initials(user.name) : "?")}
-          </div>
-          {!sidebarCollapsed && (
-            <div className="flex-1 text-left min-w-0">
-              <p className="text-xs font-semibold text-[var(--text)] truncate">{user?.name}</p>
-              <p className="text-[10px] text-[var(--text-subtle)] truncate">{user?.email}</p>
-            </div>
-          )}
+        {/* Settings */}
+        <button onClick={() => handleNavigate("settings")} title="Settings"
+          className={cn("w-full flex items-center gap-3 px-2.5 py-2 rounded-xl text-sm transition-all",
+            page === "settings"
+              ? "bg-[var(--primary-light)] text-primary-600 font-semibold"
+              : "text-[var(--text-muted)] hover:bg-[var(--surface)] hover:text-[var(--text)] font-medium"
+          )}>
+          <Settings size={15} className="flex-shrink-0" />
+          {!sidebarCollapsed && <span className="text-xs">Settings</span>}
         </button>
 
         {/* Logout */}
@@ -182,3 +263,4 @@ export default function Sidebar({ page, onNavigate }: SidebarProps) {
     </motion.aside>
   );
 }
+

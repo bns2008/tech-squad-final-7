@@ -6,7 +6,7 @@ const MISTRAL_API_URL = "https://api.mistral.ai/v1/chat/completions";
 const REQUEST_TIMEOUT = 120_000;
 
 // ─────────────────────────────────────────────────────────────────────────────
-// DIALECT SQL RULES (same as /api/analyze for consistency)
+// DIALECT SQL RULES
 // ─────────────────────────────────────────────────────────────────────────────
 const DIALECT_RULES: Record<string, string> = {
   postgresql: `TARGET DIALECT: PostgreSQL
@@ -40,83 +40,211 @@ const DIALECT_RULES: Record<string, string> = {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PROMPT BUILDER
+// DIAGRAM TYPE PROMPTS
 // ─────────────────────────────────────────────────────────────────────────────
-function buildPrompt(dialect: string): string {
+function buildPrompt(dialect: string, diagramType: string): string {
   const rules = DIALECT_RULES[dialect] ?? DIALECT_RULES.postgresql;
 
-  return `You are an expert database architect. The user will describe a database in plain English.
-Your job is to produce TWO outputs from that description:
+  // ── ER Diagram (default) ──────────────────────────────────────────────────
+  if (diagramType === "er") {
+    return `You are an expert database architect. The user will describe a database in plain English.
+Produce TWO outputs:
+1. A Mermaid erDiagram
+2. Executable ${dialect.toUpperCase()} DDL SQL
 
-1. A Mermaid erDiagram — a valid Mermaid.js entity-relationship diagram
-2. Executable ${dialect.toUpperCase()} DDL SQL — following the dialect rules below
-
-════════════════════════════════════════════════════════════════
-DIALECT RULES
-════════════════════════════════════════════════════════════════
+════ DIALECT RULES ════
 ${rules}
 
-════════════════════════════════════════════════════════════════
-OUTPUT FORMAT — you MUST return ONLY valid JSON, nothing else.
-No markdown, no explanation, no prose, no code fences.
-════════════════════════════════════════════════════════════════
-
-Return exactly this JSON structure:
+════ OUTPUT FORMAT — return ONLY valid JSON, no markdown, no prose ════
 {
-  "mermaid": "<full mermaid erDiagram block as a string>",
-  "sql": "<full DDL SQL as a string>",
-  "tables": ["table1", "table2"],
-  "relationships": [{"from": "TableA", "to": "TableB", "type": "one-to-many", "label": "has"}]
+  "mermaid": "<full mermaid erDiagram block>",
+  "sql": "<full DDL SQL>",
+  "tables": ["table1"],
+  "relationships": [{"from":"A","to":"B","type":"one-to-many","label":"has"}]
 }
 
-════════════════════════════════════════════════════════════════
-MERMAID RULES
-════════════════════════════════════════════════════════════════
+════ MERMAID RULES ════
 - Start with: erDiagram
-- Use standard Mermaid relationship syntax:
-    ||--o{  = one-to-many
-    ||--||  = one-to-one
-    }o--o{  = many-to-many
-- Each entity block lists its attributes with type and name:
-    ENTITY {
-        type column_name PK
-        type column_name FK
-        type column_name
-    }
-- Use simple lowercase types: varchar, int, text, boolean, timestamp
-- Entity names: SCREAMING_SNAKE_CASE
-- Relationships must have a quoted label string
+- Relationship syntax: ||--o{ = one-to-many, ||--|| = one-to-one, }o--o{ = many-to-many
+- Entity attributes with type and name (PK/FK markers)
+- SCREAMING_SNAKE_CASE entity names, quoted relationship labels
 
-Example of valid mermaid output:
-erDiagram
-    STUDENT {
-        varchar student_id PK
-        varchar name
-        varchar email
-    }
-    COURSE {
-        varchar course_id PK
-        varchar title
-        int credits
-    }
-    ENROLLMENT {
-        varchar enrollment_id PK
-        varchar student_id FK
-        varchar course_id FK
-        timestamp enrolled_at
-    }
-    STUDENT ||--o{ ENROLLMENT : "enrolls in"
-    COURSE ||--o{ ENROLLMENT : "has"
+════ SQL RULES ════
+- Infer sensible PKs, FKs, and cardinalities
+- Add realistic columns (name, email, created_at etc.)
+- Follow dialect rules strictly`;
+  }
 
-════════════════════════════════════════════════════════════════
-SQL RULES
-════════════════════════════════════════════════════════════════
-- Infer sensible primary keys (id columns), foreign keys, and cardinalities from the description
-- Use the dialect rules above strictly
-- Add realistic columns beyond just IDs (name, email, created_at etc.) based on the entity type
-- Keep it clean, realistic, and immediately executable
+  // ── Flowchart ─────────────────────────────────────────────────────────────
+  if (diagramType === "flowchart") {
+    return `You are a software architect. The user describes a system or process.
+Produce TWO outputs:
+1. A Mermaid flowchart (top-down)
+2. The ${dialect.toUpperCase()} database schema that supports this system
 
-Now generate the diagram and SQL for the user's description.`;
+════ DIALECT RULES ════
+${rules}
+
+════ OUTPUT FORMAT — return ONLY valid JSON, no markdown, no prose ════
+{
+  "mermaid": "<full mermaid flowchart block>",
+  "sql": "<full DDL SQL>",
+  "tables": ["table1"],
+  "relationships": []
+}
+
+════ CRITICAL MERMAID FLOWCHART RULES ════
+- Start EXACTLY with: flowchart TD
+- Node IDs must be simple alphanumeric, no spaces, no colons e.g. A, B, step1, regForm
+- Node LABELS go in brackets: A[Label Text] for rectangles, A{Label?} for decisions, A([Label]) for rounded
+- NEVER use colons inside node IDs or labels
+- Arrows MUST use --> not → not ==> not —>
+- Labeled arrows: A -->|Yes| B  or  A -->|No| C
+- Keep node labels short (max 4 words)
+- Max 15 nodes for readability
+- Show happy path and at least one alternate path
+
+VALID example:
+flowchart TD
+  start([Start]) --> reg[Registration Form]
+  reg --> valid{Valid?}
+  valid -->|Yes| enroll[Enroll Student]
+  valid -->|No| reject[Reject Registration]
+  enroll --> confirm[Send Confirmation]
+  confirm --> done([End])
+  reject --> done
+
+════ SQL RULES ════
+- Generate the supporting database tables for the described system
+- Follow dialect rules strictly`;
+  }
+
+  // ── DFD Level 0 (Context Diagram) ────────────────────────────────────────
+  if (diagramType === "dfd0") {
+    return `You are a systems analyst. The user describes a system.
+Produce TWO outputs:
+1. A Mermaid flowchart representing a DFD Level 0 (Context Diagram)
+2. The ${dialect.toUpperCase()} database schema for the system
+
+════ DIALECT RULES ════
+${rules}
+
+════ OUTPUT FORMAT — return ONLY valid JSON, no markdown, no prose ════
+{
+  "mermaid": "<full mermaid flowchart block>",
+  "sql": "<full DDL SQL>",
+  "tables": ["table1"],
+  "relationships": []
+}
+
+════ CRITICAL MERMAID DFD0 RULES ════
+- Start EXACTLY with: flowchart LR
+- Node IDs: simple alphanumeric only, NO spaces, NO colons e.g. sys, customer, bank
+- Central process node (the system): sys((SystemName))
+- External entities: rectangles e.g. customer[Customer]
+- Arrows MUST use --> not → not ==>
+- Labeled arrows: A -->|"data flow"| B  — keep labels short (2-3 words max)
+- Show 2-5 external entities flowing data to/from the central process
+- This is a CONTEXT diagram — no internal processes, no data stores
+
+VALID example:
+flowchart LR
+  customer[Customer] -->|Order Request| sys((OrderSystem))
+  sys -->|Confirmation| customer
+  sys -->|Payment Request| bank[Bank]
+  bank -->|Approval| sys
+
+════ SQL RULES ════
+- Generate the supporting database tables
+- Follow dialect rules strictly`;
+  }
+
+  // ── DFD Level 1 ───────────────────────────────────────────────────────────
+  if (diagramType === "dfd1") {
+    return `You are a systems analyst. The user describes a system.
+Produce TWO outputs:
+1. A Mermaid flowchart representing a DFD Level 1
+2. The ${dialect.toUpperCase()} database schema for the system
+
+════ DIALECT RULES ════
+${rules}
+
+════ OUTPUT FORMAT — return ONLY valid JSON, no markdown, no prose ════
+{
+  "mermaid": "<full mermaid flowchart block>",
+  "sql": "<full DDL SQL>",
+  "tables": ["table1"],
+  "relationships": []
+}
+
+════ CRITICAL MERMAID DFD1 RULES ════
+- Start EXACTLY with: flowchart TD
+- Node IDs: simple alphanumeric only, NO spaces, NO colons
+- External entities: rectangles e.g. user[User]
+- Processes: rounded rectangles e.g. p1([Validate Input])
+- Data stores: cylinder shape e.g. ds1[(UserDB)]
+- Arrows MUST use --> not → not ==>
+- Labeled arrows: A -->|"data label"| B  — keep labels short
+- Show 3-5 processes, 1-3 data stores, 2-3 external entities
+- Max ~20 nodes total
+
+VALID example:
+flowchart TD
+  user[User] -->|Login Request| p1([Validate Credentials])
+  p1 -->|Query| ds1[(UserDB)]
+  ds1 -->|User Record| p1
+  p1 -->|Valid| p2([Create Session])
+  p1 -->|Invalid| p3([Send Error])
+  p2 -->|Session Data| ds2[(SessionDB)]
+  p2 -->|Token| user
+  p3 -->|Error Msg| user
+
+════ SQL RULES ════
+- Generate the supporting database tables for all data stores shown
+- Follow dialect rules strictly`;
+  }
+
+  // ── Class Diagram ─────────────────────────────────────────────────────────
+  if (diagramType === "class") {
+    return `You are a software architect. The user describes a system or application.
+Produce TWO outputs:
+1. A Mermaid classDiagram
+2. The ${dialect.toUpperCase()} database schema that maps to these classes
+
+════ DIALECT RULES ════
+${rules}
+
+════ OUTPUT FORMAT — return ONLY valid JSON, no markdown, no prose ════
+{
+  "mermaid": "<full mermaid classDiagram block>",
+  "sql": "<full DDL SQL>",
+  "tables": ["table1"],
+  "relationships": []
+}
+
+════ CLASS DIAGRAM RULES ════
+- Start with: classDiagram
+- Each class block:
+    class ClassName {
+        +type fieldName
+        +returnType methodName()
+    }
+- Use + public, - private, # protected
+- Relationship syntax:
+    A --|> B  (inheritance)
+    A --* B  (composition)
+    A --o B  (aggregation)
+    A --> B  (association)
+    A ..> B  (dependency)
+- Add a quoted label on relationships where helpful: A --> B : "label"
+
+════ SQL RULES ════
+- Map each class to a table with appropriate columns
+- Follow dialect rules strictly`;
+  }
+
+  // fallback — ER
+  return buildPrompt(dialect, "er");
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -129,8 +257,9 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const description: string = (body.description ?? "").trim();
-    const dialect: string = (body.dialect ?? "postgresql").toLowerCase();
+    const description: string  = (body.description  ?? "").trim();
+    const dialect: string      = (body.dialect       ?? "postgresql").toLowerCase();
+    const diagramType: string  = (body.diagramType   ?? "er").toLowerCase();
 
     if (!description) {
       return NextResponse.json({ error: "No description provided" }, { status: 400 });
@@ -139,22 +268,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Description too long (max 2000 characters)" }, { status: 400 });
     }
 
-    const prompt = buildPrompt(dialect);
+    const prompt = buildPrompt(dialect, diagramType);
 
-    const ctrl = new AbortController();
+    const ctrl  = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), REQUEST_TIMEOUT);
-    const t0 = Date.now();
-
-    const mistralPayload = {
-      model: MISTRAL_MODEL,
-      messages: [
-        {
-          role: "user",
-          content: `${prompt}\n\nUser description: ${description}`,
-        },
-      ],
-      response_format: { type: "json_object" },
-    };
+    const t0    = Date.now();
 
     const res = await fetch(MISTRAL_API_URL, {
       method: "POST",
@@ -162,7 +280,11 @@ export async function POST(req: NextRequest) {
         Authorization: `Bearer ${MISTRAL_API_KEY}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(mistralPayload),
+      body: JSON.stringify({
+        model: MISTRAL_MODEL,
+        messages: [{ role: "user", content: `${prompt}\n\nUser description: ${description}` }],
+        response_format: { type: "json_object" },
+      }),
       signal: ctrl.signal,
     });
     clearTimeout(timer);
@@ -182,16 +304,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Empty response from AI" }, { status: 500 });
     }
 
-    // Parse the JSON response from the model
     let parsed: { mermaid: string; sql: string; tables: string[]; relationships: unknown[] };
     try {
       parsed = JSON.parse(raw);
     } catch {
-      // Fallback: try to extract JSON from the raw string
       const match = raw.match(/\{[\s\S]*\}/);
-      if (!match) {
-        return NextResponse.json({ error: "AI returned invalid JSON" }, { status: 500 });
-      }
+      if (!match) return NextResponse.json({ error: "AI returned invalid JSON" }, { status: 500 });
       parsed = JSON.parse(match[0]);
     }
 
@@ -205,6 +323,7 @@ export async function POST(req: NextRequest) {
       tables: parsed.tables ?? [],
       relationships: parsed.relationships ?? [],
       dialect,
+      diagramType,
       processingTime: Date.now() - t0,
     });
 
