@@ -30,7 +30,7 @@ function TokenizedSQL({ code }: { code: string }) {
   const lines = code.split("\n");
   const keywords = ["CREATE", "TABLE", "VARCHAR", "PRIMARY", "KEY", "ALTER", "ADD", "CONSTRAINT", "FOREIGN", "REFERENCES", "NULL", "NOT"];
   const stringColor = "#22C55E";
-  const kwColor = "#7C3AED";
+  const kwColor = "#16A34A";
   const commentColor = "#6B7280";
 
   return (

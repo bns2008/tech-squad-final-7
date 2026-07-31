@@ -112,7 +112,7 @@ export default function AdminPage() {
         <StatCard label="Total Users" value={users.length} icon={Users} tone="bg-blue-50 text-blue-600" />
         <StatCard label="Free Plan" value={users.filter((candidate) => getSubscription(candidate).planId === "free").length} icon={UserRound} tone="bg-slate-100 text-slate-600" />
         <StatCard label="Pro Plan" value={users.filter((candidate) => getSubscription(candidate).planId === "pro").length} icon={Zap} tone="bg-amber-50 text-amber-600" />
-        <StatCard label="Total Projects" value={projects.length} icon={FolderOpen} tone="bg-indigo-50 text-indigo-600" />
+        <StatCard label="Total Projects" value={projects.length} icon={FolderOpen} tone="bg-emerald-50 text-emerald-600" />
         <StatCard label="Conversions" value={totalConversions} icon={FileCode} tone="bg-emerald-50 text-emerald-600" />
         <StatCard label="Active Users" value={activeUsers} icon={Activity} tone="bg-cyan-50 text-cyan-600" detail="Last 30 days" />
         <StatCard label="Storage" value={formatBytes(storage)} icon={HardDrive} tone="bg-rose-50 text-rose-600" detail="Generated workspace data" />

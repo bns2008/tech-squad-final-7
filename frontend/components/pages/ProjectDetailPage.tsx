@@ -216,7 +216,7 @@ export default function ProjectDetailPage({ onNavigate }: { onNavigate: (p: stri
         </button>
         <ChevronRight size={13}/>
         <span className="font-semibold text-[var(--text)]">{project.name}</span>
-        <span className="badge badge-purple text-[10px] ml-1">{project.dbType}</span>
+        <span className="badge badge-emerald text-[10px] ml-1">{project.dbType}</span>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-[280px_1fr] gap-5">
@@ -244,8 +244,8 @@ export default function ProjectDetailPage({ onNavigate }: { onNavigate: (p: stri
               className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-[var(--surface)] transition-colors"
             >
               <div className="flex items-center gap-2.5">
-                <div className="w-7 h-7 rounded-lg bg-violet-50 dark:bg-violet-500/10 flex items-center justify-center">
-                  <Wand2 size={14} className="text-violet-600" />
+                <div className="w-7 h-7 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center">
+                  <Wand2 size={14} className="text-emerald-600" />
                 </div>
                 <span className="text-sm font-semibold text-[var(--text)]">Generate from Text</span>
               </div>
@@ -304,8 +304,8 @@ export default function ProjectDetailPage({ onNavigate }: { onNavigate: (p: stri
                       onClick={generateFromDescription}
                       disabled={genStatus === "processing" || !genDesc.trim()}
                       className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl
-                        text-sm font-semibold bg-gradient-to-r from-violet-600 to-primary-600
-                        text-white hover:shadow-lg hover:shadow-violet-500/25 transition-all
+                        text-sm font-semibold bg-gradient-to-r from-emerald-600 to-primary-600
+                        text-white hover:shadow-lg hover:shadow-emerald-500/25 transition-all
                         disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
                     >
                       {genStatus === "processing" ? (
@@ -479,8 +479,8 @@ export default function ProjectDetailPage({ onNavigate }: { onNavigate: (p: stri
                   ) : (
                     <div className="flex flex-col items-center justify-center gap-4 min-h-[240px] py-10 px-6 text-center
                       bg-[repeating-linear-gradient(45deg,transparent,transparent_10px,rgba(0,0,0,0.015)_10px,rgba(0,0,0,0.015)_20px)]">
-                      <div className="w-16 h-16 rounded-2xl bg-violet-50 dark:bg-violet-500/10 flex items-center justify-center">
-                        <Wand2 size={28} className="text-violet-500" />
+                      <div className="w-16 h-16 rounded-2xl bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center">
+                        <Wand2 size={28} className="text-emerald-500" />
                       </div>
                       <div>
                         <p className="text-sm font-semibold text-[var(--text)]">AI Generated Schema</p>
@@ -492,8 +492,8 @@ export default function ProjectDetailPage({ onNavigate }: { onNavigate: (p: stri
                         <button
                           onClick={() => { setActiveFolder("sql"); }}
                           className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold
-                            bg-violet-50 dark:bg-violet-500/10 text-violet-600 border border-violet-200
-                            dark:border-violet-500/20 hover:bg-violet-100 dark:hover:bg-violet-500/20 transition-colors"
+                            bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 border border-emerald-200
+                            dark:border-emerald-500/20 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 transition-colors"
                         >
                           <FileCode size={14} /> View SQL
                         </button>

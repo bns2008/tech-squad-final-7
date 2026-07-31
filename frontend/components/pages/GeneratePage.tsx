@@ -63,9 +63,9 @@ const DIAGRAM_TYPES = [
     label: "DFD Level 1",
     icon: Layers,
     desc: "Decomposed processes, data stores & flows",
-    color: "text-violet-600",
-    bg: "bg-violet-50 dark:bg-violet-900/20",
-    border: "border-violet-400",
+    color: "text-emerald-600",
+    bg: "bg-emerald-50 dark:bg-emerald-900/20",
+    border: "border-emerald-400",
   },
   {
     value: "class",
@@ -329,7 +329,7 @@ export default function GeneratePage({ onNavigate }: { onNavigate: (p: string) =
           <div className="flex items-center gap-3 mb-2">
             <Wand2 size={22} className="text-primary-600" />
             <h1 className="text-3xl font-bold text-[var(--text)]">Generate Schema</h1>
-            <span className="badge badge-purple text-xs px-2.5 py-1">AI Powered</span>
+            <span className="badge badge-emerald text-xs px-2.5 py-1">AI Powered</span>
           </div>
           <p className="text-base text-[var(--text-muted)]">
             Describe your database in plain English and get an ER diagram + SQL instantly.&nbsp;

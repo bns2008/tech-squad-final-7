@@ -271,7 +271,7 @@ export default function MigratePage({ onNavigate }: { onNavigate: (p: string) =>
           <div className="flex items-center gap-3 mb-2">
             <ArrowRightLeft size={22} className="text-primary-600" />
             <h1 className="text-3xl font-bold text-[var(--text)]">Script Migrator</h1>
-            <span className="badge badge-purple text-xs px-2.5 py-1">AI Powered</span>
+            <span className="badge badge-emerald text-xs px-2.5 py-1">AI Powered</span>
           </div>
           <p className="text-base text-[var(--text-muted)]">
             Convert SQL scripts across dialects — tables, inserts, procedures, triggers &amp; more.&nbsp;

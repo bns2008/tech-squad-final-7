@@ -94,7 +94,7 @@ export default function HistoryPage({ onNavigate }: { onNavigate: (p: string) =>
                       </div>
                     </td>
                     <td className="px-5 py-3.5">
-                      <span className="badge badge-purple text-[10px] font-mono">{entry.dbType}</span>
+                      <span className="badge badge-emerald text-[10px] font-mono">{entry.dbType}</span>
                     </td>
                     <td className="px-5 py-3.5">
                       <span className="text-xs text-[var(--text-muted)]">{entry.stats?.tables ?? "—"}</span>

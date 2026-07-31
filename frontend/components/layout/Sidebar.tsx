@@ -16,7 +16,7 @@ interface SidebarProps {
 const toolsItems = [
   { id: "quick-convert", label: "Quick Convert", icon: Sparkles,     badge: "Image → SQL",  badgeColor: "text-primary-500 bg-primary-50 dark:bg-primary-900/30" },
   { id: "generate",      label: "Generate",      icon: Wand2,         badge: "Text → SQL",   badgeColor: "text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30" },
-  { id: "migrate",       label: "Migrator",      icon: ArrowRightLeft, badge: "SQL → SQL",   badgeColor: "text-violet-600 bg-violet-50 dark:bg-violet-900/30" },
+  { id: "migrate",       label: "Migrator",      icon: ArrowRightLeft, badge: "SQL → SQL",   badgeColor: "text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30" },
 ];
 
 const mainNav = [

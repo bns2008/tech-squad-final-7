@@ -199,7 +199,7 @@ export default function ProfilePage({ onNavigate }: { onNavigate: (p: string) =>
                   "badge text-xs font-semibold px-3 py-1",
                   user?.role === "admin"
                     ? "bg-amber-50 dark:bg-amber-500/10 text-amber-600"
-                    : "badge-purple"
+                    : "badge-emerald"
                 )}>
                   {user?.role}
                 </span>

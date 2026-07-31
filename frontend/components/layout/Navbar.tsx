@@ -117,7 +117,7 @@ export default function Navbar({ onNavigate }: NavbarProps) {
                     "badge text-[10px] font-semibold px-2.5 py-0.5",
                     user?.role === "admin"
                       ? "bg-amber-50 dark:bg-amber-500/10 text-amber-600"
-                      : "badge-purple"
+                      : "badge-emerald"
                   )}>
                     {user?.role}
                   </span>

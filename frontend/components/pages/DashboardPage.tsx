@@ -137,8 +137,8 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (p: string) 
             label: "Projects",
             value: myProjects.length,
             icon: FolderOpen,
-            color: "text-violet-600",
-            bg: "bg-violet-50 dark:bg-violet-500/10",
+            color: "text-emerald-600",
+            bg: "bg-emerald-50 dark:bg-emerald-500/10",
             tooltip: "Total project workspaces you've created. Each project holds ER diagram images and their generated SQL files.",
           },
           {
@@ -227,8 +227,8 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (p: string) 
       <div
         className="rounded-2xl bg-[var(--surface)] p-5
           border border-primary-200/70 dark:border-primary-700/30
-          shadow-[0_2px_4px_rgba(16,24,40,0.04),0_8px_24px_-6px_rgba(53,89,216,0.14),0_16px_48px_-12px_rgba(53,89,216,0.10),inset_0_1px_0_rgba(255,255,255,0.6)]
-          dark:shadow-[0_2px_4px_rgba(0,0,0,0.2),0_8px_24px_-6px_rgba(53,89,216,0.25),0_16px_48px_-12px_rgba(53,89,216,0.18),inset_0_1px_0_rgba(255,255,255,0.04)]"
+          shadow-[0_2px_4px_rgba(16,24,40,0.04),0_8px_24px_-6px_rgba(34,197,94,0.14),0_16px_48px_-12px_rgba(34,197,94,0.10),inset_0_1px_0_rgba(255,255,255,0.6)]
+          dark:shadow-[0_2px_4px_rgba(0,0,0,0.2),0_8px_24px_-6px_rgba(34,197,94,0.25),0_16px_48px_-12px_rgba(34,197,94,0.18),inset_0_1px_0_rgba(255,255,255,0.04)]"
       >
         <div className="mb-4">
           <h2 className="text-sm font-bold text-[var(--text)]">Tools</h2>
@@ -244,7 +244,7 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (p: string) 
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.05 }}
-            whileHover={{ y: -2, boxShadow: "0 8px 24px -4px rgba(53,89,216,0.18), 0 2px 8px -2px rgba(16,24,40,0.08)" }}
+            whileHover={{ y: -2, boxShadow: "0 8px 24px -4px rgba(34,197,94,0.18), 0 2px 8px -2px rgba(16,24,40,0.08)" }}
             className="card p-5 flex flex-col gap-4 cursor-pointer
               hover:border-primary-300 dark:hover:border-primary-700 transition-colors"
             onClick={() => onNavigate("quick-convert")}
@@ -305,20 +305,20 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (p: string) 
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.15 }}
-            whileHover={{ y: -2, boxShadow: "0 8px 24px -4px rgba(124,58,237,0.18), 0 2px 8px -2px rgba(16,24,40,0.08)" }}
+            whileHover={{ y: -2, boxShadow: "0 8px 24px -4px rgba(34,197,94,0.18), 0 2px 8px -2px rgba(16,24,40,0.08)" }}
             className="card p-5 flex flex-col gap-4 cursor-pointer
-              hover:border-violet-300 dark:hover:border-violet-700 transition-colors"
+              hover:border-emerald-300 dark:hover:border-emerald-700 transition-colors"
             onClick={() => onNavigate("migrate")}
           >
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-violet-50 dark:bg-violet-900/30 border border-violet-100 dark:border-violet-800/40 flex items-center justify-center flex-shrink-0">
-                <GitMerge size={18} className="text-violet-600" />
+              <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-100 dark:border-emerald-800/40 flex items-center justify-center flex-shrink-0">
+                <GitMerge size={18} className="text-emerald-600" />
               </div>
               <p className="font-bold text-[var(--text)] text-sm">Migrate</p>
             </div>
             <span className="self-start text-[10px] font-semibold px-2 py-0.5 rounded-md
-              bg-violet-50 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400
-              border border-violet-100 dark:border-violet-800/40">
+              bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400
+              border border-emerald-100 dark:border-emerald-800/40">
               sql → sql
             </span>
             <p className="text-[11px] text-[var(--text-muted)] leading-relaxed flex-1">
@@ -326,7 +326,7 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (p: string) 
             </p>
             <button
               className="text-xs w-full justify-center flex items-center gap-1.5 px-4 py-2 rounded-lg
-                font-semibold bg-violet-600 hover:bg-violet-700 text-white transition-colors"
+                font-semibold bg-emerald-600 hover:bg-emerald-700 text-white transition-colors"
             >
               Open migrate <ArrowRight size={12} />
             </button>
