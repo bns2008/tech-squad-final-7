@@ -15,7 +15,7 @@ import type { QuickConvertResult } from "@/lib/types";
 import UpgradeLimitDialog from "@/components/UpgradeLimitDialog";
 import dynamic from "next/dynamic";
 import toast from "react-hot-toast";
-import { apiSaveQuickHistory, apiClearQuickHistory } from "@/lib/api";
+import { apiSaveQuickHistory, apiClearQuickHistory, apiSaveToolHistory } from "@/lib/api";
 
 const MonacoEditor = dynamic(
   () => import("@monaco-editor/react").then((m) => m.default),
@@ -110,6 +110,19 @@ export default function QuickConvertPage({ onNavigate }: { onNavigate: (p: strin
             user_id: numericId, id: result.id, filename: result.filename,
             sql: result.sql, stats: result.stats, processingTime: result.processingTime,
           }).catch(() => {});
+          // ── Save to tool history (shown in History page) ──
+          apiSaveToolHistory({
+            user_id: numericId,
+            tool: "quick_convert",
+            action_label: `${result.filename} → ${selectedDb.toUpperCase()}`,
+            result_sql: result.sql,
+            dialect_from: "image",
+            dialect_to: selectedDb,
+            tables_count: result.stats.tables,
+            processing_time_ms: result.processingTime,
+            success: true,
+            extra_json: { filename: result.filename, relationships: result.stats.relationships },
+          }).catch((e) => console.error("tool-history save failed:", e));
         }
         toast.success("Conversion complete!");
       } catch (err: any) {
@@ -119,7 +132,7 @@ export default function QuickConvertPage({ onNavigate }: { onNavigate: (p: strin
         toast.error(err.message || "Analysis failed");
       }
     },
-    [sub, qcPreview, runStepAnimation, addQuickResult, incrementConversions, selectedDb]
+    [sub, qcPreview, runStepAnimation, addQuickResult, incrementConversions, selectedDb, user]
   );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({

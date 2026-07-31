@@ -63,11 +63,49 @@ ${rules}
   "relationships": [{"from":"A","to":"B","type":"one-to-many","label":"has"}]
 }
 
-════ MERMAID RULES ════
-- Start with: erDiagram
-- Relationship syntax: ||--o{ = one-to-many, ||--|| = one-to-one, }o--o{ = many-to-many
-- Entity attributes with type and name (PK/FK markers)
-- SCREAMING_SNAKE_CASE entity names, quoted relationship labels
+════ MERMAID STRICT RULES — follow exactly or the diagram will not render ════
+
+RULE 1 — First line must be exactly: erDiagram
+  No capitalisation variants. No prefix. Just: erDiagram
+
+RULE 2 — Entity attribute format: TYPE name MARKER
+  Each attribute is on its own line inside curly braces:
+    ENTITY_NAME {
+        TYPE column_name MARKER
+    }
+  MARKER is optional and must be only PK, FK, or UK (nothing else).
+  Never combine markers: write PK on one line, not "PK FK".
+
+RULE 3 — ALLOWED attribute types ONLY (never use anything else):
+  string, int, float, boolean, date, datetime
+  NEVER use: VARCHAR, NVARCHAR, VARCHAR2, TEXT, BIGINT, SERIAL, DECIMAL, TIMESTAMP,
+  CHAR, NUMBER, DATETIME2, TINYINT, SMALLINT, INTEGER, NUMERIC, REAL, DOUBLE
+
+RULE 4 — Relationship syntax (exactly):
+  ENTITY_A RELATIONSHIP ENTITY_B : "label"
+  Where RELATIONSHIP is one of: ||--|| ||--o| ||--|{ ||--o{ }o--|| }o--o{ }|--|| }|--|{
+  Labels must be a SINGLE word with NO spaces: use "places" not "places orders"
+  NEVER use multi-word labels like "included in" — write "includes" instead
+
+RULE 5 — Entity names: PascalCase or UPPER_SNAKE, no spaces, no hyphens
+
+RULE 6 — No comments (-- lines) inside the mermaid block
+
+VALID EXAMPLE:
+erDiagram
+    CUSTOMER {
+        int customer_id PK
+        string first_name
+        string email UK
+        string phone
+    }
+    ORDER {
+        int order_id PK
+        int customer_id FK
+        float total
+        date created_at
+    }
+    CUSTOMER ||--o{ ORDER : "places"
 
 ════ SQL RULES ════
 - Infer sensible PKs, FKs, and cardinalities

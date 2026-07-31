@@ -7,8 +7,7 @@ import {
   FileJson, ArrowRight, FileCode, Sparkles, X,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
-import { downloadText, downloadJSON, parseSQLStats, formatTime, cn } from "@/lib/utils";
-import { canConvert, conversionsLeft } from "@/lib/subscription";
+import { downloadText, downloadJSON, parseSQLStats, formatTime, cn } from "@/lib/utils";import { canConvert, conversionsLeft } from "@/lib/subscription";
 import UpgradeLimitDialog from "@/components/UpgradeLimitDialog";
 import dynamic from "next/dynamic";
 import toast from "react-hot-toast";
@@ -247,6 +246,23 @@ export default function MigratePage({ onNavigate }: { onNavigate: (p: string) =>
       setStatus("done");
       setActiveTab("output");
       incrementConversions();
+      // ── Save to tool history ──
+      const numericId = parseInt(useStore.getState().user?.id ?? "", 10);
+      if (!isNaN(numericId)) {
+        const { apiSaveToolHistory } = await import("@/lib/api");
+        apiSaveToolHistory({
+          user_id: numericId,
+          tool: "migrate",
+          action_label: `${sourceDialect.toUpperCase()} → ${targetDialect.toUpperCase()}`,
+          result_sql: data.sql,
+          dialect_from: sourceDialect,
+          dialect_to: targetDialect,
+          tables_count: tables,
+          processing_time_ms: Date.now() - t0,
+          success: true,
+          extra_json: { original_lines: data.originalLines, converted_lines: data.convertedLines },
+        }).catch(() => {});
+      }
       toast.success("Migration complete!");
     } catch (err: any) {
       stopSteps();

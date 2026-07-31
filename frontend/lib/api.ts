@@ -147,6 +147,51 @@ export async function apiGetUsers() {
   return request<BackendUser[]>("/users");
 }
 
+// ─── Tool History ─────────────────────────────────────────────────────────────
+
+export interface BackendToolHistory {
+  id: string;
+  tool: "quick_convert" | "generate" | "migrate";
+  action_label: string;
+  result_sql: string;
+  dialect_from: string | null;
+  dialect_to: string | null;
+  tables_count: number;
+  processing_time_ms: number;
+  success: boolean;
+  extra_json: Record<string, unknown>;
+  created_at: number; // ms timestamp
+}
+
+export async function apiSaveToolHistory(p: {
+  user_id: number;
+  tool: string;
+  action_label: string;
+  result_sql?: string;
+  dialect_from?: string;
+  dialect_to?: string;
+  tables_count?: number;
+  processing_time_ms?: number;
+  success?: boolean;
+  extra_json?: object;
+}) {
+  return request<{ message: string; id: string }>("/tool-history", {
+    method: "POST",
+    body: JSON.stringify(p),
+  });
+}
+
+export async function apiGetToolHistory(userId: number) {
+  return request<BackendToolHistory[]>(`/tool-history/${userId}`);
+}
+
+export async function apiDeleteToolHistoryEntry(userId: number, entryId: string) {
+  return request<{ message: string }>(`/tool-history/${userId}/${entryId}`, { method: "DELETE" });
+}
+
+export async function apiClearToolHistory(userId: number) {
+  return request<{ message: string }>(`/tool-history/${userId}`, { method: "DELETE" });
+}
 export async function apiGetActivity(userId: number) {
   return request<{ id: number; activity_type: string; description: string; timestamp: string }[]>(
     `/activity/${userId}`

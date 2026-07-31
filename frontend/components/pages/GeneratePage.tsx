@@ -147,21 +147,92 @@ export default function GeneratePage({ onNavigate }: { onNavigate: (p: string) =
 
   // ── Sanitize Mermaid syntax before rendering ──────────────────────────────
   function sanitizeMermaid(raw: string): string {
-    return raw
-      // Normalize unicode arrows to -->
-      .replace(/—>/g, "-->")
-      .replace(/→/g, "-->")
-      .replace(/=>/g, "-->")
-      // Remove colons inside node labels e.g. [Start: Foo] → [Start Foo]
-      .replace(/\[([^\]]*):([^\]]*)\]/g, (_, a, b) => `[${a.trim()} ${b.trim()}]`)
-      // Remove colons inside round parens (process nodes) e.g. (P1: Process) → (P1 Process)
-      .replace(/\(([^)]*):([^)]*)\)/g, (_, a, b) => `(${a.trim()} ${b.trim()})`)
-      // Fix bare arrow labels: -->|Yes| → -->|Yes|  (already ok, but clean spaces)
-      .replace(/-->\s*\|/g, "-->|")
-      // Ensure flowchart keyword is lowercase
-      .replace(/^Flowchart\s/im, "flowchart ")
-      // Trim
-      .trim();
+    let s = raw.trim();
+
+    // ── Flowchart-specific fixes ───────────────────────────────────────────
+    if (!s.toLowerCase().startsWith("erdiagram")) {
+      s = s.replace(/^Flowchart\s/im, "flowchart ");
+      s = s.replace(/—>/g, "-->").replace(/→/g, "-->").replace(/=>/g, "-->");
+      s = s.replace(/-->\s*\|/g, "-->|");
+      s = s.replace(/\[([^\]]*):([^\]]*)\]/g, (_, a, b) => `[${a.trim()} ${b.trim()}]`);
+      s = s.replace(/\(([^)]*):([^)]*)\)/g, (_, a, b) => `(${a.trim()} ${b.trim()})`);
+      return s.split("\n").filter(l => l.trim()).join("\n");
+    }
+
+    // ── ER Diagram fixes ───────────────────────────────────────────────────
+
+    // 1. Normalize keyword
+    s = s.replace(/^er[_\-\s]?diagram/im, "erDiagram");
+
+    // 2. Map SQL types → Mermaid-safe types
+    const typeMap: Record<string, string> = {
+      "VARCHAR\\(\\d+\\)": "string",
+      "NVARCHAR\\(\\d+\\)": "string",
+      "VARCHAR2\\(\\d+\\)": "string",
+      "CHAR\\(\\d+\\)": "string",
+      "VARCHAR": "string",
+      "NVARCHAR": "string",
+      "VARCHAR2": "string",
+      "TEXT": "string",
+      "CLOB": "string",
+      "LONGTEXT": "string",
+      "MEDIUMTEXT": "string",
+      "SERIAL": "int",
+      "BIGINT": "int",
+      "SMALLINT": "int",
+      "INTEGER": "int",
+      "TINYINT\\(\\d+\\)": "int",
+      "TINYINT": "int",
+      "NUMERIC\\(\\d+,\\s*\\d+\\)": "float",
+      "NUMERIC": "float",
+      "DECIMAL\\(\\d+,\\s*\\d+\\)": "float",
+      "DECIMAL": "float",
+      "DOUBLE PRECISION": "float",
+      "DOUBLE": "float",
+      "REAL": "float",
+      "NUMBER\\(\\d+,\\s*\\d+\\)": "float",
+      "NUMBER": "int",
+      "DATETIME2": "datetime",
+      "DATETIME": "datetime",
+      "TIMESTAMP": "datetime",
+      "TIMESTAMPTZ": "datetime",
+      "DATE": "date",
+      "TIME": "string",
+      "BOOLEAN": "boolean",
+      "BOOL": "boolean",
+      "BIT": "boolean",
+      "BYTEA": "string",
+      "BLOB": "string",
+      "JSON": "string",
+      "JSONB": "string",
+      "UUID": "string",
+    };
+
+    for (const [pattern, replacement] of Object.entries(typeMap)) {
+      s = s.replace(new RegExp(`\\b${pattern}\\b`, "gi"), replacement);
+    }
+
+    // 3. Fix relationship labels — multi-word → single word (no spaces)
+    s = s.replace(/:\s*"([^"]+)"/g, (_, label) => {
+      const safe = label.trim().replace(/\s+/g, "_").replace(/[^a-zA-Z0-9_]/g, "");
+      return `: "${safe || "has"}"`;
+    });
+    // Also fix unquoted labels
+    s = s.replace(/:\s+([a-zA-Z][a-zA-Z0-9 ]+)$/gm, (_, label) => {
+      const safe = label.trim().replace(/\s+/g, "_");
+      return `: "${safe}"`;
+    });
+
+    // 4. Remove UK marker (not always supported) — keep PK and FK only
+    s = s.replace(/\bUK\b/g, "");
+
+    // 5. Remove comments inside mermaid block
+    s = s.replace(/^\s*--.*$/gm, "");
+
+    // 6. Remove blank lines
+    s = s.split("\n").filter(l => l.trim() !== "").join("\n");
+
+    return s;
   }
 
   // ── Render Mermaid diagram ──────────────────────────────────────────────────
@@ -187,7 +258,9 @@ export default function GeneratePage({ onNavigate }: { onNavigate: (p: string) =
         .then(({ svg }) => {
           if (!cancelled) setMermaidSvg(svg);
         })
-        .catch(() => {
+        .catch((err) => {
+          console.warn("Mermaid render failed:", err?.message ?? err);
+          console.warn("Cleaned mermaid input:\n", cleaned);
           if (!cancelled) setMermaidError(true);
         });
     });
@@ -244,6 +317,23 @@ export default function GeneratePage({ onNavigate }: { onNavigate: (p: string) =
       setStatus("done");
       setActiveTab("diagram");
       incrementConversions();
+      // ── Save to tool history ──
+      const numericId = parseInt(user?.id ?? "", 10);
+      if (!isNaN(numericId)) {
+        const { apiSaveToolHistory } = await import("@/lib/api");
+        apiSaveToolHistory({
+          user_id: numericId,
+          tool: "generate",
+          action_label: `"${description.trim().slice(0, 60)}" → ${selectedDb.toUpperCase()}`,
+          result_sql: data.sql,
+          dialect_from: "text",
+          dialect_to: selectedDb,
+          tables_count: tables,
+          processing_time_ms: generated.processingTime,
+          success: true,
+          extra_json: { diagramType, relationships: fks, description: description.trim().slice(0, 200) },
+        }).catch(() => {});
+      }
       toast.success("Schema generated!");
     } catch (err: any) {
       stopAnim();
@@ -251,7 +341,7 @@ export default function GeneratePage({ onNavigate }: { onNavigate: (p: string) =
       setStatus("error");
       toast.error(err.message || "Generation failed");
     }
-  }, [description, selectedDb, diagramType, sub, runStepAnimation, incrementConversions]);
+  }, [description, selectedDb, diagramType, sub, runStepAnimation, incrementConversions, user]);
 
   const reset = () => {
     setStatus("idle");
