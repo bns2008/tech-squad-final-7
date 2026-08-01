@@ -14,9 +14,9 @@ interface SidebarProps {
 }
 
 const toolsItems = [
-  { id: "quick-convert", label: "Quick Convert", icon: Sparkles,     badge: "Image → SQL",  badgeColor: "text-primary-500 bg-primary-50 dark:bg-primary-900/30" },
-  { id: "generate",      label: "Generate",      icon: Wand2,         badge: "Text → SQL",   badgeColor: "text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30" },
-  { id: "migrate",       label: "Migrator",      icon: ArrowRightLeft, badge: "SQL → SQL",   badgeColor: "text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30" },
+  { id: "quick-convert", label: "Quick Convert", icon: Sparkles,      badge: "Image → SQL", badgeColor: "text-indigo-400 bg-indigo-500/10" },
+  { id: "generate",      label: "Generate",      icon: Wand2,          badge: "Text → SQL",  badgeColor: "text-violet-400 bg-violet-500/10" },
+  { id: "migrate",       label: "Migrator",      icon: ArrowRightLeft, badge: "SQL → SQL",   badgeColor: "text-violet-400 bg-violet-500/10" },
 ];
 
 const mainNav = [
@@ -27,6 +27,47 @@ const mainNav = [
   { id: "profile",   label: "Profile",   icon: UserRound },
 ];
 
+// ── Shared classes ────────────────────────────────────────────────────────────
+// Inactive nav item: uses CSS vars so it works in both light and dark.
+const inactiveNav =
+  "text-[var(--text-muted)] hover:bg-[var(--surface)] hover:text-[var(--text)]";
+
+// Active nav item: gradient + white text (same in both themes).
+const activeNav =
+  "text-white shadow-[0_8px_24px_rgba(99,102,241,0.25)]";
+const activeStyle = { background: "linear-gradient(90deg,#6366F1,#7C3AED)" };
+
+// Bottom-section hover (Settings / Sign Out / Collapse)
+const bottomHover =
+  "text-[var(--text-muted)] hover:bg-[var(--surface)] hover:text-[var(--text)]";
+
+// ── NavBtn ────────────────────────────────────────────────────────────────────
+function NavBtn({
+  active, onClick, title, icon, label,
+}: {
+  active: boolean;
+  onClick: () => void;
+  title: string;
+  icon: React.ReactNode;
+  label: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      title={title}
+      className={cn(
+        "w-full flex items-center gap-3 px-[18px] py-[11px] rounded-[12px] text-sm font-medium transition-all duration-200",
+        active ? activeNav : inactiveNav,
+      )}
+      style={active ? activeStyle : undefined}
+    >
+      {icon}
+      {label && <span className="truncate">{label}</span>}
+    </button>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 export default function Sidebar({ page, onNavigate }: SidebarProps) {
   const { user, sidebarCollapsed, setSidebarCollapsed, logout, projects: allProjects } = useStore();
   const [mobileOpen, setMobileOpen] = useState(true);
@@ -36,7 +77,6 @@ export default function Sidebar({ page, onNavigate }: SidebarProps) {
   const projects = allProjects.filter(p => p.ownerId === (user?.id ?? ""));
   const isAdmin = user?.role === "admin";
   const width = sidebarCollapsed ? 64 : 220;
-
   const isToolPage = ["quick-convert", "generate", "migrate"].includes(page);
 
   const handleNavigate = (id: string) => {
@@ -49,62 +89,86 @@ export default function Sidebar({ page, onNavigate }: SidebarProps) {
       animate={{ width }}
       transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
       className={cn(
-        "sidebar fixed left-0 top-0 bottom-0 z-30 flex flex-col bg-[var(--card)] border-r border-[var(--border)] overflow-hidden",
+        "sidebar fixed left-0 top-0 bottom-0 z-30 flex flex-col overflow-hidden",
+        // ↓ semantic var: #FFFFFF in light, #0F172A in dark
+        "bg-[var(--surface-sidebar)] border-r border-[var(--border)]",
         mobileOpen && "mobile-sidebar-open"
       )}
     >
-      {/* Logo */}
-      <div className="flex items-center h-[57px] px-3 border-b border-[var(--border)] flex-shrink-0 gap-3">
-        <div className="w-8 h-8 rounded-lg bg-primary-600 flex items-center justify-center flex-shrink-0">
+      {/* ── Logo ──────────────────────────────────────────────────────────── */}
+      <div className="flex items-center h-[57px] px-[14px] border-b border-[var(--border)] flex-shrink-0 gap-3">
+        {/* Logo icon — always gradient, always white icon */}
+        <div
+          className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+          style={{ background: "linear-gradient(135deg,#6366F1,#7C3AED)" }}
+        >
           <Database size={15} className="text-white" />
         </div>
+
         <AnimatePresence>
           {!sidebarCollapsed && (
-            <motion.div initial={{opacity:0,x:-8}} animate={{opacity:1,x:0}} exit={{opacity:0,x:-8}} transition={{duration:0.2}}>
-              <p className="font-bold text-[14px] text-[var(--text)] whitespace-nowrap">ER AI Studio</p>
+            <motion.div
+              initial={{ opacity: 0, x: -8 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -8 }}
+              transition={{ duration: 0.2 }}
+              className="min-w-0"
+            >
+              {/* App name: primary text color */}
+              <p className="font-bold text-[14px] text-[var(--text)] whitespace-nowrap leading-tight">
+                ER AI Studio
+              </p>
+              {/* Subtitle: muted text color */}
+              <p className="text-[10px] text-[var(--text-subtle)] whitespace-nowrap leading-tight mt-0.5">
+                Schema Intelligence
+              </p>
             </motion.div>
           )}
         </AnimatePresence>
-        <button onClick={() => setMobileOpen(false)} className="mobile-sidebar-close" aria-label="Close navigation">
+
+        <button
+          onClick={() => setMobileOpen(false)}
+          className="mobile-sidebar-close"
+          aria-label="Close navigation"
+        >
           <X size={17} />
         </button>
       </div>
 
-      {/* Nav */}
-      <nav className="flex-1 px-2 py-3 space-y-0.5 overflow-y-auto overflow-x-hidden">
-        {/* New Project quick-action */}
+      {/* ── Nav ───────────────────────────────────────────────────────────── */}
+      <nav className="flex-1 px-[10px] py-3 space-y-0.5 overflow-y-auto overflow-x-hidden">
+
+        {/* New Project — always gradient, always white */}
         <button
           onClick={() => handleNavigate("projects")}
           title="New Project"
           className={cn(
-            "w-full flex items-center gap-3 px-2.5 py-2.5 rounded-xl mb-2 text-sm font-semibold transition-all",
-            "bg-primary-600 text-white hover:bg-primary-700"
+            "w-full flex items-center gap-3 px-[18px] py-[11px] rounded-[14px] mb-3 text-sm font-semibold",
+            "text-white transition-all duration-200",
+            "hover:shadow-[0_4px_16px_rgba(99,102,241,0.35)]"
           )}
+          style={{ background: "linear-gradient(135deg,#6366F1,#7C3AED)" }}
+          onMouseEnter={e => (e.currentTarget.style.background = "linear-gradient(135deg,#7C3AED,#8B5CF6)")}
+          onMouseLeave={e => (e.currentTarget.style.background = "linear-gradient(135deg,#6366F1,#7C3AED)")}
         >
           <Plus size={15} className="flex-shrink-0" />
           {!sidebarCollapsed && <span>New Project</span>}
         </button>
 
         {/* Dashboard */}
-        <button
+        <NavBtn
+          active={page === "dashboard"}
           onClick={() => handleNavigate("dashboard")}
           title="Dashboard"
-          className={cn("w-full flex items-center gap-3 px-2.5 py-2.5 rounded-xl text-sm font-medium transition-all",
-            page === "dashboard"
-              ? "bg-[var(--primary-light)] text-primary-600"
-              : "text-[var(--text-muted)] hover:bg-[var(--surface)] hover:text-[var(--text)]"
-          )}
-        >
-          <LayoutDashboard size={16} className="flex-shrink-0" />
-          {!sidebarCollapsed && <span className="truncate">Dashboard</span>}
-        </button>
+          icon={<LayoutDashboard size={16} className="flex-shrink-0" />}
+          label={!sidebarCollapsed ? "Dashboard" : null}
+        />
 
-        {/* ── Tools accordion ── */}
+        {/* ── Tools accordion ─────────────────────────────────────────────── */}
         <div>
           <button
             onClick={() => {
               if (sidebarCollapsed) {
-                // expand sidebar first, then open tools
                 setSidebarCollapsed(false);
                 setToolsOpen(true);
               } else {
@@ -113,20 +177,16 @@ export default function Sidebar({ page, onNavigate }: SidebarProps) {
             }}
             title="Tools"
             className={cn(
-              "w-full flex items-center gap-3 px-2.5 py-2.5 rounded-xl text-sm font-medium transition-all",
-              isToolPage
-                ? "bg-[var(--primary-light)] text-primary-600"
-                : "text-[var(--text-muted)] hover:bg-[var(--surface)] hover:text-[var(--text)]"
+              "w-full flex items-center gap-3 px-[18px] py-[11px] rounded-[12px] text-sm font-medium transition-all duration-200",
+              isToolPage ? activeNav : inactiveNav,
             )}
+            style={isToolPage ? activeStyle : undefined}
           >
             <Wrench size={16} className="flex-shrink-0" />
             {!sidebarCollapsed && (
               <>
                 <span className="flex-1 truncate text-left">Tools</span>
-                <motion.span
-                  animate={{ rotate: toolsOpen ? 180 : 0 }}
-                  transition={{ duration: 0.2 }}
-                >
+                <motion.span animate={{ rotate: toolsOpen ? 180 : 0 }} transition={{ duration: 0.2 }}>
                   <ChevronDown size={13} />
                 </motion.span>
               </>
@@ -143,17 +203,17 @@ export default function Sidebar({ page, onNavigate }: SidebarProps) {
                 transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
                 className="overflow-hidden"
               >
-                <div className="mt-1 ml-3 pl-3 border-l-2 border-[var(--border)] space-y-0.5 pb-1">
+                {/* Sub-tree border uses --border so it's #E5E7EB light / rgba white dark */}
+                <div className="mt-1 ml-3 pl-3 border-l border-[var(--border)] space-y-0.5 pb-1">
                   {toolsItems.map(({ id, label, icon: Icon, badge, badgeColor }) => (
                     <button
                       key={id}
                       onClick={() => handleNavigate(id)}
                       className={cn(
-                        "w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs font-medium transition-all group",
-                        page === id
-                          ? "bg-[var(--primary-light)] text-primary-600"
-                          : "text-[var(--text-muted)] hover:bg-[var(--surface)] hover:text-[var(--text)]"
+                        "w-full flex items-center gap-2.5 px-[14px] py-[9px] rounded-[12px] text-xs font-medium transition-all duration-200 group",
+                        page === id ? activeNav : inactiveNav,
                       )}
+                      style={page === id ? activeStyle : undefined}
                     >
                       <Icon size={14} className="flex-shrink-0" />
                       <span className="flex-1 truncate text-left">{label}</span>
@@ -172,19 +232,23 @@ export default function Sidebar({ page, onNavigate }: SidebarProps) {
           </AnimatePresence>
         </div>
 
-        {/* Rest of nav */}
+        {/* Rest of main nav */}
         {mainNav.filter(n => n.id !== "dashboard").map(({ id, label, icon: Icon }) => (
-          <button key={`${id}-${label}`} onClick={() => handleNavigate(id)} title={label}
-            className={cn("w-full flex items-center gap-3 px-2.5 py-2.5 rounded-xl text-sm font-medium transition-all",
-              page === id
-                ? "bg-[var(--primary-light)] text-primary-600"
-                : "text-[var(--text-muted)] hover:bg-[var(--surface)] hover:text-[var(--text)]"
+          <button
+            key={`${id}-${label}`}
+            onClick={() => handleNavigate(id)}
+            title={label}
+            className={cn(
+              "w-full flex items-center gap-3 px-[18px] py-[11px] rounded-[12px] text-sm font-medium transition-all duration-200",
+              page === id ? activeNav : inactiveNav,
             )}
+            style={page === id ? activeStyle : undefined}
           >
             <Icon size={16} className="flex-shrink-0" />
             {!sidebarCollapsed && <span className="truncate">{label}</span>}
             {!sidebarCollapsed && id === "projects" && projects.length > 0 && (
-              <span className="ml-auto text-[10px] font-bold bg-[var(--border)] text-[var(--text-muted)] px-1.5 py-0.5 rounded-full">
+              /* Project count pill — subtle in both themes */
+              <span className="ml-auto text-[10px] font-bold bg-[var(--primary-light)] text-[var(--primary)] px-1.5 py-0.5 rounded-full">
                 {projects.length}
               </span>
             )}
@@ -194,17 +258,23 @@ export default function Sidebar({ page, onNavigate }: SidebarProps) {
         {/* Admin section */}
         {isAdmin && (
           <>
-            <div className="pt-3 pb-1">
+            <div className="pt-4 pb-1">
               {!sidebarCollapsed && (
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-subtle)] px-2.5">Admin</p>
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-subtle)] px-[18px] opacity-60">
+                  Admin
+                </p>
               )}
             </div>
-            <button onClick={() => handleNavigate("admin")} title="Admin Panel"
-              className={cn("w-full flex items-center gap-3 px-2.5 py-2.5 rounded-xl text-sm font-medium transition-all",
+            <button
+              onClick={() => handleNavigate("admin")}
+              title="Admin Panel"
+              className={cn(
+                "w-full flex items-center gap-3 px-[18px] py-[11px] rounded-[12px] text-sm font-medium transition-all duration-200",
                 page === "admin"
-                  ? "bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400"
-                  : "text-[var(--text-muted)] hover:bg-[var(--surface)] hover:text-[var(--text)]"
+                  ? "text-white shadow-[0_8px_24px_rgba(245,158,11,0.20)]"
+                  : inactiveNav,
               )}
+              style={page === "admin" ? { background: "linear-gradient(90deg,#F59E0B,#D97706)" } : undefined}
             >
               <Shield size={16} className="flex-shrink-0" />
               {!sidebarCollapsed && <span>Admin Panel</span>}
@@ -214,15 +284,21 @@ export default function Sidebar({ page, onNavigate }: SidebarProps) {
 
         {/* Recent projects */}
         {!sidebarCollapsed && projects.length > 0 && (
-          <div className="pt-3">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--text-subtle)] px-2.5 mb-1.5">Recent</p>
+          <div className="pt-4">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-subtle)] px-[18px] mb-2 opacity-60">
+              Recent
+            </p>
             {projects.slice(0, 4).map((p) => (
-              <button key={p.id}
+              <button
+                key={p.id}
                 onClick={() => { useStore.getState().setActiveProject(p.id); handleNavigate("project-detail"); }}
-                className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs text-[var(--text-muted)] hover:bg-[var(--surface)] hover:text-[var(--text)] transition-all"
+                className={cn(
+                  "w-full flex items-center gap-2.5 px-[18px] py-[9px] rounded-[12px] text-xs transition-all duration-200",
+                  inactiveNav,
+                )}
               >
-                <div className="w-5 h-5 rounded bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center flex-shrink-0">
-                  <Database size={10} className="text-primary-600" />
+                <div className="w-5 h-5 rounded-md bg-[var(--primary-light)] flex items-center justify-center flex-shrink-0">
+                  <Database size={10} className="text-[var(--primary)]" />
                 </div>
                 <span className="truncate">{p.name}</span>
               </button>
@@ -231,36 +307,55 @@ export default function Sidebar({ page, onNavigate }: SidebarProps) {
         )}
       </nav>
 
-      {/* Bottom: profile + collapse */}
-      <div className="border-t border-[var(--border)] p-2 space-y-1 flex-shrink-0">
+      {/* ── Bottom: settings + sign out + collapse ────────────────────────── */}
+      <div className="border-t border-[var(--border)] px-[10px] py-3 space-y-0.5 flex-shrink-0">
+
         {/* Settings */}
-        <button onClick={() => handleNavigate("settings")} title="Settings"
-          className={cn("w-full flex items-center gap-3 px-2.5 py-2 rounded-xl text-sm transition-all",
-            page === "settings"
-              ? "bg-[var(--primary-light)] text-primary-600 font-semibold"
-              : "text-[var(--text-muted)] hover:bg-[var(--surface)] hover:text-[var(--text)] font-medium"
-          )}>
+        <button
+          onClick={() => handleNavigate("settings")}
+          title="Settings"
+          className={cn(
+            "w-full flex items-center gap-3 px-[18px] py-[11px] rounded-[12px] text-sm font-medium transition-all duration-200",
+            page === "settings" ? activeNav : bottomHover,
+          )}
+          style={page === "settings" ? activeStyle : undefined}
+        >
           <Settings size={15} className="flex-shrink-0" />
           {!sidebarCollapsed && <span className="text-xs">Settings</span>}
         </button>
 
-        {/* Logout */}
-        <button onClick={() => { useStore.getState().logout(); }} title="Sign out"
-          className="w-full flex items-center gap-3 px-2.5 py-2 rounded-xl text-[var(--text-muted)] hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-500 transition-all text-sm">
+        {/* Sign Out — never active, just hover */}
+        <button
+          onClick={() => { useStore.getState().logout(); }}
+          title="Sign out"
+          className={cn(
+            "w-full flex items-center gap-3 px-[18px] py-[11px] rounded-[12px] text-sm font-medium transition-all duration-200",
+            bottomHover,
+          )}
+        >
           <LogOut size={15} className="flex-shrink-0" />
-          {!sidebarCollapsed && <span className="text-xs font-medium">Sign Out</span>}
+          {!sidebarCollapsed && <span className="text-xs">Sign Out</span>}
         </button>
 
         {/* Collapse toggle */}
-        <button onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-          className="w-full flex items-center justify-center py-1.5 rounded-xl text-[var(--text-subtle)] hover:bg-[var(--surface)] hover:text-[var(--text)] transition-all">
+        <button
+          onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+          className={cn(
+            "w-full flex items-center justify-center py-[9px] rounded-[12px] transition-all duration-200",
+            bottomHover,
+          )}
+        >
           {sidebarCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
         </button>
       </div>
-      <button onClick={() => setMobileOpen((open) => !open)} className="mobile-sidebar-toggle" aria-label={mobileOpen ? "Close navigation" : "Open navigation"}>
+
+      <button
+        onClick={() => setMobileOpen((open) => !open)}
+        className="mobile-sidebar-toggle"
+        aria-label={mobileOpen ? "Close navigation" : "Open navigation"}
+      >
         {mobileOpen ? <X size={20} /> : <Database size={20} />}
       </button>
     </motion.aside>
   );
 }
-

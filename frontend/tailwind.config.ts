@@ -10,21 +10,38 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        // ── Semantic tokens — resolve from CSS variables ──────────────────────
+        // These flip automatically when .dark is toggled on <html>
+        background:  "var(--background)",
+        surface:     "var(--surface)",
+        sidebar:     "var(--surface-sidebar)",
+        navbar:      "var(--surface-navbar)",
+        card:        "var(--card)",
+        border:      "var(--border)",
+        "input-bg":  "var(--input-bg)",
+        success:     "var(--success)",
+        warning:     "var(--warning)",
+        danger:      "var(--danger)",
+
+        // Text
+        "text-primary":   "var(--text)",
+        "text-secondary": "var(--text-muted)",
+        "text-muted":     "var(--text-subtle)",
+
+        // Brand
         primary: {
-          DEFAULT: "#16A34A",
-          50: "#F0FDF4",
-          100: "#DCFCE7",
-          200: "#BBF7D0",
-          300: "#86EFAC",
-          400: "#4ADE80",
-          500: "#22C55E",
-          600: "#16A34A",
-          700: "#15803D",
-          800: "#166534",
-          900: "#14532D",
+          DEFAULT: "var(--primary)",
+          hover:   "var(--primary-hover)",
+          light:   "var(--primary-light)",
+          // Fixed shade scale (same in both themes)
+          300: "#A5B4FC",
+          400: "#818CF8",
+          500: "#6366F1",
+          600: "#7C3AED",
+          700: "#4338CA",
+          800: "#3730A3",
+          900: "#312E81",
         },
-        surface: "#FAFAFC",
-        "card": "#FFFFFF",
       },
       fontFamily: {
         sans: ["Manrope", "system-ui", "-apple-system", "sans-serif"],
@@ -33,7 +50,7 @@ const config: Config = {
       boxShadow: {
         card: "0 1px 3px 0 rgba(0,0,0,0.06), 0 1px 2px -1px rgba(0,0,0,0.04)",
         "card-hover": "0 4px 12px 0 rgba(0,0,0,0.08), 0 2px 4px -1px rgba(0,0,0,0.04)",
-        "card-lg": "0 8px 24px 0 rgba(0,0,0,0.08), 0 2px 8px -2px rgba(0,0,0,0.04)",
+        "card-lg": "0 12px 35px rgba(0,0,0,0.35)",
       },
       animation: {
         "fade-in": "fadeIn 0.3s ease-out",

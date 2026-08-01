@@ -13,6 +13,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        {/* Flash-of-wrong-theme prevention: reads persisted store and applies .dark BEFORE paint */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var s=JSON.parse(localStorage.getItem('er-ai-studio-v4')||'{}');if((s.state||{}).theme==='dark')document.documentElement.classList.add('dark');}catch(e){}})();`,
+          }}
+        />
         <link
           rel="preconnect"
           href="https://fonts.googleapis.com"

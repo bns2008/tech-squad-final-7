@@ -13,11 +13,15 @@ export default function Providers({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     seedSuperAdmin();
+    // Apply the persisted theme immediately on mount
     document.documentElement.classList.toggle("dark", theme === "dark");
   }, []);
 
+  // Keep the class in sync whenever the user switches theme
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
+    // Also smooth-transition the background colour change
+    document.documentElement.style.colorScheme = theme;
   }, [theme]);
 
   return (

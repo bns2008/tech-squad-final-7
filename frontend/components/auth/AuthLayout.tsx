@@ -140,7 +140,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
 
       {/* ── Left brand panel ── */}
       <div className="hidden lg:flex lg:w-[520px] xl:w-[580px] flex-col relative overflow-hidden flex-shrink-0"
-        style={{ background: "linear-gradient(135deg, #4C1D95 0%, #2D1B69 50%, #1E1040 100%)" }}>
+        style={{ background: "linear-gradient(135deg, #1E1040 0%, #2D1B69 50%, #4C1D95 100%)" }}>
 
         <ThreeBackground />
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/40" />
