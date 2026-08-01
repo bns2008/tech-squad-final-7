@@ -245,3 +245,34 @@ class QuickHistory(Base):
 
     # Relationship
     user: Mapped["User"] = relationship("User")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# TABLE 10: tool_history
+# Every action performed by a user in any tool.
+# Visible in pgAdmin:
+#   SELECT t.id, u.full_name, t.tool, t.action, t.result_sql, t.created_at
+#   FROM tool_history t JOIN users u ON t.user_id = u.id
+#   ORDER BY t.created_at DESC;
+# ─────────────────────────────────────────────────────────────────────────────
+class ToolHistory(Base):
+    __tablename__ = "tool_history"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    entry_uid: Mapped[str] = mapped_column(String(100), unique=True, nullable=False, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    tool: Mapped[str] = mapped_column(String(50), nullable=False)
+    # 'quick_convert' | 'generate' | 'migrate'
+    action_label: Mapped[str] = mapped_column(String(255), nullable=False)
+    # human-readable: "er_diagram.png → PostgreSQL", "University DB text → MySQL", "MySQL → PostgreSQL"
+    result_sql: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    dialect_from: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    dialect_to: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    tables_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    processing_time_ms: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    success: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    extra_json: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[datetime.datetime] = mapped_column(DateTime, server_default=func.now(), nullable=False, index=True)
+
+    # Relationship
+    user: Mapped["User"] = relationship("User")

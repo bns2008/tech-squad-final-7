@@ -343,6 +343,102 @@ def save_conversion(payload: dict, request: Request, db: Session = Depends(get_d
     return {"message": "Saved", "conversion_id": conv.id}
 
 
+# ── Record a Razorpay payment + upgrade plan atomically ──────────────────────
+@app.post("/payments")
+def record_payment(payload: dict, request: Request, db: Session = Depends(get_db)):
+    from models import Payment
+    user_id             = payload.get("user_id")
+    razorpay_order_id   = payload.get("razorpay_order_id")
+    razorpay_payment_id = payload.get("razorpay_payment_id")
+    razorpay_signature  = payload.get("razorpay_signature")
+    amount_paise        = payload.get("amount_paise", 19900)   # ₹199 default
+    plan_purchased      = payload.get("plan_purchased", "pro")
+
+    if not user_id:
+        raise HTTPException(status_code=400, detail="user_id is required")
+
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Upgrade the plan
+    user.plan = plan_purchased if plan_purchased in ("free", "pro") else "pro"
+
+    # Insert payment record
+    payment = Payment(
+        user_id=user_id,
+        razorpay_order_id=razorpay_order_id,
+        razorpay_payment_id=razorpay_payment_id,
+        razorpay_signature=razorpay_signature,
+        amount_paise=amount_paise,
+        currency="INR",
+        plan_purchased=plan_purchased,
+        status="paid",
+        verified_at=datetime.datetime.utcnow(),
+    )
+    db.add(payment)
+    db.commit()
+    db.refresh(payment)
+
+    log_activity(db, "upgrade", user_id=user_id,
+                 description=f"Upgraded to {plan_purchased} via Razorpay",
+                 ip_address=get_ip(request),
+                 metadata={"payment_id": payment.id,
+                           "razorpay_payment_id": razorpay_payment_id,
+                           "amount_paise": amount_paise})
+
+    return {"message": "Payment recorded", "payment_id": payment.id, "user": _user_dict(user)}
+
+
+# ── Get payments for a user ───────────────────────────────────────────────────
+@app.get("/payments/{user_id}")
+def get_payments(user_id: int, db: Session = Depends(get_db)):
+    from models import Payment
+    rows = (db.query(Payment)
+              .filter(Payment.user_id == user_id)
+              .order_by(Payment.created_at.desc())
+              .all())
+    return [
+        {
+            "id": p.id,
+            "razorpay_order_id":   p.razorpay_order_id,
+            "razorpay_payment_id": p.razorpay_payment_id,
+            "amount_paise":        p.amount_paise,
+            "plan_purchased":      p.plan_purchased,
+            "status":              p.status,
+            "created_at":          str(p.created_at),
+            "verified_at":         str(p.verified_at) if p.verified_at else None,
+        }
+        for p in rows
+    ]
+
+
+# ── Update user plan ──────────────────────────────────────────────────────────
+@app.put("/user/{user_id}/plan")
+def update_plan(user_id: int, payload: dict, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    plan = payload.get("plan", "free")
+    if plan not in ("free", "pro"):
+        raise HTTPException(status_code=400, detail="plan must be 'free' or 'pro'")
+    user.plan = plan
+    db.commit()
+    db.refresh(user)
+    return {"message": "Plan updated", "user": _user_dict(user)}
+
+
+# ── Increment conversions used this month ────────────────────────────────────
+@app.post("/increment-conversions/{user_id}")
+def increment_conversions(user_id: int, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    user.conversions_used_this_month += 1
+    db.commit()
+    return {"conversions_used_this_month": user.conversions_used_this_month}
+
+
 # ── Log export ────────────────────────────────────────────────────────────────
 @app.post("/log-export")
 def log_export(payload: dict, request: Request, db: Session = Depends(get_db)):
@@ -359,7 +455,97 @@ def log_export(payload: dict, request: Request, db: Session = Depends(get_db)):
     return {"message": "Logged"}
 
 
-# ── Activity log ──────────────────────────────────────────────────────────────
+# ── Save tool history entry ───────────────────────────────────────────────────
+@app.post("/tool-history")
+def save_tool_history(payload: dict, db: Session = Depends(get_db)):
+    from models import ToolHistory
+    import uuid
+    user_id          = payload.get("user_id")
+    tool             = payload.get("tool", "")
+    action_label     = payload.get("action_label", "")
+    result_sql       = payload.get("result_sql", "")
+    dialect_from     = payload.get("dialect_from")
+    dialect_to       = payload.get("dialect_to")
+    tables_count     = payload.get("tables_count", 0)
+    processing_time  = payload.get("processing_time_ms", 0)
+    success          = payload.get("success", True)
+    extra_json       = payload.get("extra_json", {})
+
+    if not user_id:
+        raise HTTPException(status_code=400, detail="user_id is required")
+
+    entry = ToolHistory(
+        entry_uid=str(uuid.uuid4()),
+        user_id=user_id,
+        tool=tool,
+        action_label=action_label,
+        result_sql=result_sql,
+        dialect_from=dialect_from,
+        dialect_to=dialect_to,
+        tables_count=tables_count,
+        processing_time_ms=processing_time,
+        success=success,
+        extra_json=extra_json,
+    )
+    db.add(entry)
+    db.commit()
+    db.refresh(entry)
+    return {"message": "Saved", "id": entry.entry_uid}
+
+
+# ── Get tool history for a user ───────────────────────────────────────────────
+@app.get("/tool-history/{user_id}")
+def get_tool_history(user_id: int, limit: int = 100, db: Session = Depends(get_db)):
+    from models import ToolHistory
+    entries = (
+        db.query(ToolHistory)
+        .filter(ToolHistory.user_id == user_id)
+        .order_by(ToolHistory.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+    return [_tool_history_dict(e) for e in entries]
+
+
+# ── Delete single tool history entry ─────────────────────────────────────────
+@app.delete("/tool-history/{user_id}/{entry_uid}")
+def delete_tool_history_entry(user_id: int, entry_uid: str, db: Session = Depends(get_db)):
+    from models import ToolHistory
+    entry = db.query(ToolHistory).filter(
+        ToolHistory.user_id == user_id,
+        ToolHistory.entry_uid == entry_uid
+    ).first()
+    if entry:
+        db.delete(entry)
+        db.commit()
+    return {"message": "Deleted"}
+
+
+# ── Clear all tool history for a user ────────────────────────────────────────
+@app.delete("/tool-history/{user_id}")
+def clear_tool_history(user_id: int, db: Session = Depends(get_db)):
+    from models import ToolHistory
+    db.query(ToolHistory).filter(ToolHistory.user_id == user_id).delete()
+    db.commit()
+    return {"message": "Cleared"}
+
+
+def _tool_history_dict(e) -> dict:
+    return {
+        "id": e.entry_uid,
+        "tool": e.tool,
+        "action_label": e.action_label,
+        "result_sql": e.result_sql or "",
+        "dialect_from": e.dialect_from,
+        "dialect_to": e.dialect_to,
+        "tables_count": e.tables_count,
+        "processing_time_ms": e.processing_time_ms or 0,
+        "success": e.success,
+        "extra_json": e.extra_json or {},
+        "created_at": int(e.created_at.timestamp() * 1000),
+    }
+
+
 @app.get("/activity/{user_id}")
 def user_activity_log(user_id: int, db: Session = Depends(get_db)):
     logs = (db.query(UserActivity)
