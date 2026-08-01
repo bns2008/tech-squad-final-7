@@ -33,7 +33,7 @@ const config: Config = {
           DEFAULT: "var(--primary)",
           hover:   "var(--primary-hover)",
           light:   "var(--primary-light)",
-          // Fixed shade scale (same in both themes)
+          // Named shade scale — purely referential, not used as active accent
           300: "#A5B4FC",
           400: "#818CF8",
           500: "#6366F1",
@@ -41,6 +41,12 @@ const config: Config = {
           700: "#4338CA",
           800: "#3730A3",
           900: "#312E81",
+          // Sage green shades (dark mode reference)
+          "sage-300": "#B8CEAE",
+          "sage-400": "#9ABA90",
+          "sage-500": "#8BAA82",
+          "sage-600": "#76956E",
+          "sage-700": "#5E7A57",
         },
       },
       fontFamily: {

@@ -32,14 +32,17 @@ const mainNav = [
 const inactiveNav =
   "text-[var(--text-muted)] hover:bg-[var(--surface)] hover:text-[var(--text)]";
 
-// Active nav item: gradient + white text (same in both themes).
+// Active nav item — background applied via inline style using --primary so it
+// resolves to indigo in light and coral in dark automatically.
 const activeNav =
-  "text-white shadow-[0_8px_24px_rgba(99,102,241,0.25)]";
-const activeStyle = { background: "linear-gradient(90deg,#6366F1,#7C3AED)" };
+  "text-white shadow-[0_8px_24px_rgba(0,0,0,0.20)]";
 
 // Bottom-section hover (Settings / Sign Out / Collapse)
 const bottomHover =
   "text-[var(--text-muted)] hover:bg-[var(--surface)] hover:text-[var(--text)]";
+
+// Active nav inline style — uses CSS variable so theme drives the color
+const activeStyle: React.CSSProperties = { background: "var(--primary)" };
 
 // ── NavBtn ────────────────────────────────────────────────────────────────────
 function NavBtn({
@@ -97,10 +100,10 @@ export default function Sidebar({ page, onNavigate }: SidebarProps) {
     >
       {/* ── Logo ──────────────────────────────────────────────────────────── */}
       <div className="flex items-center h-[57px] px-[14px] border-b border-[var(--border)] flex-shrink-0 gap-3">
-        {/* Logo icon — always gradient, always white icon */}
+        {/* Logo icon — gradient in light, solid coral in dark via --primary */}
         <div
           className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-          style={{ background: "linear-gradient(135deg,#6366F1,#7C3AED)" }}
+          style={{ background: "var(--primary)" }}
         >
           <Database size={15} className="text-white" />
         </div>
@@ -138,18 +141,17 @@ export default function Sidebar({ page, onNavigate }: SidebarProps) {
       {/* ── Nav ───────────────────────────────────────────────────────────── */}
       <nav className="flex-1 px-[10px] py-3 space-y-0.5 overflow-y-auto overflow-x-hidden">
 
-        {/* New Project — always gradient, always white */}
+        {/* New Project — uses --primary / --primary-hover so coral in dark, indigo in light */}
         <button
           onClick={() => handleNavigate("projects")}
           title="New Project"
           className={cn(
             "w-full flex items-center gap-3 px-[18px] py-[11px] rounded-[14px] mb-3 text-sm font-semibold",
             "text-white transition-all duration-200",
-            "hover:shadow-[0_4px_16px_rgba(99,102,241,0.35)]"
           )}
-          style={{ background: "linear-gradient(135deg,#6366F1,#7C3AED)" }}
-          onMouseEnter={e => (e.currentTarget.style.background = "linear-gradient(135deg,#7C3AED,#8B5CF6)")}
-          onMouseLeave={e => (e.currentTarget.style.background = "linear-gradient(135deg,#6366F1,#7C3AED)")}
+          style={{ background: "var(--primary)" }}
+          onMouseEnter={e => (e.currentTarget.style.background = "var(--primary-hover)")}
+          onMouseLeave={e => (e.currentTarget.style.background = "var(--primary)")}
         >
           <Plus size={15} className="flex-shrink-0" />
           {!sidebarCollapsed && <span>New Project</span>}
