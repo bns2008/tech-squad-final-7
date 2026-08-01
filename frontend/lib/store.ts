@@ -102,7 +102,12 @@ export const useStore = create<Store>()(
       user: null,
       token: null,
       isAuthenticated: false,
-      setUser: (user) => set({ user, isAuthenticated: !!user }),
+      setUser: (user) => set({
+        user,
+        isAuthenticated: !!user,
+        // Restore subscription from the user object (carries DB conversions count on login)
+        ...(user?.subscription ? { subscription: user.subscription } : {}),
+      }),
       setToken: (token) => set({ token }),
       logout: () =>
         set({
@@ -131,24 +136,30 @@ export const useStore = create<Store>()(
       subscription: defaultSubscription(),
       setSubscription: (subscription) => set({ subscription }),
       upgradeToPro: () =>
-        set((state) => ({
-          subscription: {
+        set((state) => {
+          const upgraded = {
             ...state.subscription,
-            planId: "pro",
+            planId: "pro" as const,
             startedAt: Date.now(),
             renewsAt: Date.now() + 30 * 24 * 60 * 60 * 1000,
-          },
-        })),
+          };
+          return {
+            subscription: upgraded,
+            // Also update the user object so user.subscription.planId reflects "pro"
+            user: state.user
+              ? { ...state.user, subscription: upgraded }
+              : state.user,
+          };
+        }),
       incrementConversions: () =>
         set((state) => {
           const s = maybeResetMonthly(state.subscription);
           const updated = { ...s, conversionsUsedThisMonth: s.conversionsUsedThisMonth + 1 };
-          // Sync new count to backend for the current user
+          // Persist the incremented count to the backend so it survives logout/login
           const userId = parseInt(state.user?.id ?? "", 10);
           if (!isNaN(userId)) {
-            import("./api").then(({ apiUpdateProfile }) => {
-              // no-op — backend increments its own counter via /save-conversion
-              // this just ensures the frontend subscription slice stays accurate
+            import("./api").then(({ apiIncrementConversions }) => {
+              apiIncrementConversions(userId).catch(() => {});
             }).catch(() => {});
           }
           return { subscription: updated };

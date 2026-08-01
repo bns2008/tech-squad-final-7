@@ -107,7 +107,8 @@ export default function PricingPage() {
             razorpay_signature:  string;
           }) => {
             try {
-              // 4. Verify signature on the server
+              // 4. Verify signature on the server + persist plan upgrade in DB
+              const numericUserId = parseInt(user?.id ?? "", 10);
               const verifyRes = await fetch("/api/razorpay/verify-payment", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -115,12 +116,15 @@ export default function PricingPage() {
                   razorpay_order_id:   response.razorpay_order_id,
                   razorpay_payment_id: response.razorpay_payment_id,
                   razorpay_signature:  response.razorpay_signature,
+                  // Pass user_id so verify route can persist plan = "pro" in DB
+                  user_id: isNaN(numericUserId) ? undefined : numericUserId,
                 }),
               });
 
               const result = await verifyRes.json();
 
               if (verifyRes.ok && result.status === "success") {
+                // Upgrade local Zustand state immediately
                 upgradeToPro();
                 toast.success("🎉 Upgraded to Pro! Enjoy 50 conversions per month.");
                 resolve();

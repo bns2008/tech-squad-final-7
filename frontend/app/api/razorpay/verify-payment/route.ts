@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import Razorpay from "razorpay";
 import crypto from "crypto";
 
-const KEY_ID     = process.env.RAZORPAY_KEY_ID     ?? "";
 const KEY_SECRET = process.env.RAZORPAY_KEY_SECRET ?? "";
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 // ── POST /api/razorpay/verify-payment ────────────────────────────────────────
-// Body: { razorpay_order_id, razorpay_payment_id, razorpay_signature }
+// Body: { razorpay_order_id, razorpay_payment_id, razorpay_signature, user_id }
 export async function POST(req: NextRequest) {
   if (!KEY_SECRET) {
     return NextResponse.json(
@@ -16,7 +15,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } =
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, user_id } =
       await req.json();
 
     if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
@@ -40,8 +39,30 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // ── Signature is valid ────────────────────────────────────────────────────
-    // In production: persist the subscription upgrade in your database here.
+    // ── Signature is valid — record payment + upgrade plan in the database ──────
+    if (user_id) {
+      try {
+        const res = await fetch(`${BACKEND_URL}/payments`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            user_id,
+            razorpay_order_id,
+            razorpay_payment_id,
+            razorpay_signature,
+            amount_paise: 19900,   // ₹199
+            plan_purchased: "pro",
+          }),
+        });
+        if (!res.ok) {
+          console.error("[verify-payment] Failed to record payment in DB:", await res.text());
+        }
+      } catch (dbErr) {
+        console.error("[verify-payment] DB payment record error:", dbErr);
+        // Don't fail the whole request — payment is already captured by Razorpay
+      }
+    }
+
     return NextResponse.json({
       status:  "success",
       message: "Payment verified successfully.",

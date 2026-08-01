@@ -67,6 +67,12 @@ export async function apiUpdateProfile(userId: number, p: { full_name?: string; 
   });
 }
 
+export async function apiUpdatePlan(userId: number, plan: "free" | "pro") {
+  return request<{ message: string; user: BackendUser }>(`/user/${userId}/plan`, {
+    method: "PUT", body: JSON.stringify({ plan }),
+  });
+}
+
 // ─── Projects ─────────────────────────────────────────────────────────────────
 
 export interface BackendProject {
@@ -124,6 +130,12 @@ export async function apiClearQuickHistory(userId: number) {
 }
 
 // ─── Conversions / exports ────────────────────────────────────────────────────
+
+export async function apiIncrementConversions(userId: number) {
+  return request<{ conversions_used_this_month: number }>(`/increment-conversions/${userId}`, {
+    method: "POST",
+  });
+}
 
 export async function apiSaveConversion(p: {
   user_id: number; image_id: number; generated_ddl: string; dialect: string;
