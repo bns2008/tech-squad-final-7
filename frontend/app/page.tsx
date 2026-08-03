@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -23,6 +23,7 @@ import PricingPage from "@/components/pages/PricingPage";
 import QuickConvertPage from "@/components/pages/QuickConvertPage";
 import GeneratePage from "@/components/pages/GeneratePage";
 import MigratePage from "@/components/pages/MigratePage";
+import PlaygroundPage from "@/app/playground/page";
 import ProfilePage from "@/components/pages/ProfilePage";
 
 import { useStore } from "@/lib/store";
@@ -32,7 +33,7 @@ import { LayoutDashboard, FolderOpen, History, Settings, Shield } from "lucide-r
 const DatabaseScene = dynamic(() => import("@/components/ambient/DatabaseScene"), { ssr: false });
 
 type AuthPage = "login" | "register" | "forgot";
-type AppPage  = "dashboard" | "projects" | "project-detail" | "history" | "quick-convert" | "generate" | "migrate" | "pricing" | "profile" | "settings" | "admin";
+type AppPage  = "dashboard" | "projects" | "project-detail" | "history" | "quick-convert" | "generate" | "migrate" | "playground" | "pricing" | "profile" | "settings" | "admin";
 
 export default function RootPage() {
   const { isAuthenticated, user, sidebarCollapsed } = useStore();
@@ -46,7 +47,7 @@ export default function RootPage() {
 
   if (!mounted) return null;
 
-  // ── Not logged in: show auth screens ──────────────────────────────────────
+  // â”€â”€ Not logged in: show auth screens â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if (!isAuthenticated) {
     return (
       <AuthLayout>
@@ -77,7 +78,7 @@ export default function RootPage() {
     );
   }
 
-  // ── Logged in: main app ────────────────────────────────────────────────────
+  // â”€â”€ Logged in: main app â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const ml = sidebarCollapsed ? 64 : 220;
 
   const navigate = (page: string) => {
@@ -95,6 +96,7 @@ export default function RootPage() {
       case "quick-convert":  return <QuickConvertPage onNavigate={navigate} />;
       case "generate":       return <GeneratePage onNavigate={navigate} />;
       case "migrate":        return <MigratePage onNavigate={navigate} />;
+      case "playground":     return <PlaygroundPage />;
       case "pricing":        return <PricingPage />;
       case "profile":        return <ProfilePage onNavigate={navigate} />;
       case "settings":       return <SettingsPage />;
@@ -140,3 +142,4 @@ export default function RootPage() {
     </div>
   );
 }
+

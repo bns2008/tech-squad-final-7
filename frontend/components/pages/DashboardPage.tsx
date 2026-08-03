@@ -114,9 +114,10 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (p: string) 
           {!isPro && (
             <button
               onClick={() => onNavigate("pricing")}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold
-                bg-gradient-to-r from-primary-600 to-primary-700 text-white
-                hover:shadow-lg hover:shadow-primary-500/25 transition-all"
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold text-white transition-all duration-200"
+              style={{ background: "var(--primary)" }}
+              onMouseEnter={e => (e.currentTarget.style.background = "var(--primary-hover)")}
+              onMouseLeave={e => (e.currentTarget.style.background = "var(--primary)")}
             >
               <Zap size={13} className="text-yellow-300" /> Upgrade to Pro
             </button>

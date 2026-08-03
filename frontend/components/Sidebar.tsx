@@ -49,7 +49,10 @@ export default function Sidebar({ page, onNavigate }: SidebarProps) {
 
       {/* Upgrade banner */}
       <div className="px-3 pb-4">
-        <div className="rounded-xl bg-gradient-to-br from-primary-600 to-primary-800 p-4 text-white">
+        <div
+          className="rounded-xl p-4 text-white"
+          style={{ background: "var(--primary)" }}
+        >
           <div className="flex items-center gap-2 mb-1.5">
             <Zap size={15} className="text-yellow-300" />
             <span className="font-bold text-sm">Upgrade to Pro</span>
@@ -59,8 +62,10 @@ export default function Sidebar({ page, onNavigate }: SidebarProps) {
             <li>✓ Export in All Formats</li>
             <li>✓ Priority Support</li>
           </ul>
-          <button className="w-full bg-white text-primary-700 font-semibold text-xs
-            py-2 rounded-lg hover:bg-white/90 transition-colors">
+          <button
+            className="w-full bg-white font-semibold text-xs py-2 rounded-lg hover:bg-white/90 transition-colors"
+            style={{ color: "var(--primary)" }}
+          >
             Upgrade Now
           </button>
         </div>

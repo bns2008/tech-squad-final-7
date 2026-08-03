@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@dagrejs/dagre": "^3.1.0",
     "@monaco-editor/react": "^4.6.0",
     "@react-three/fiber": "^9.6.1",
     "@tanstack/react-query": "^5.56.2",
@@ -16,6 +17,7 @@
     "clsx": "^2.1.1",
     "date-fns": "^3.6.0",
     "framer-motion": "^11.5.4",
+    "html2canvas": "^1.4.1",
     "lucide-react": "^0.441.0",
     "mermaid": "11.16.0",
     "next": "^15.5.20",
@@ -24,6 +26,8 @@
     "react-dom": "19.0.0",
     "react-dropzone": "^14.2.3",
     "react-hot-toast": "^2.4.1",
+    "reactflow": "^11.11.4",
+    "sql-formatter": "^15.8.2",
     "tailwind-merge": "^2.5.2",
     "three": "^0.185.1",
     "zustand": "^4.5.5"

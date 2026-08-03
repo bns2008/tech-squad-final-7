@@ -1,8 +1,8 @@
-"use client";
+﻿"use client";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, FolderOpen, History, Settings, Shield,
-  ChevronLeft, ChevronRight, Database, LogOut, Plus, Sparkles, CreditCard, UserRound, X, Wand2, ArrowRightLeft, Wrench, ChevronDown
+  ChevronLeft, ChevronRight, Database, LogOut, Plus, Sparkles, CreditCard, UserRound, X, Wand2, ArrowRightLeft, Wrench, ChevronDown, Terminal
 } from "lucide-react";
 import { useState } from "react";
 import { useStore } from "@/lib/store";
@@ -14,9 +14,9 @@ interface SidebarProps {
 }
 
 const toolsItems = [
-  { id: "quick-convert", label: "Quick Convert", icon: Sparkles,      badge: "Image → SQL", badgeColor: "text-indigo-400 bg-indigo-500/10" },
-  { id: "generate",      label: "Generate",      icon: Wand2,          badge: "Text → SQL",  badgeColor: "text-violet-400 bg-violet-500/10" },
-  { id: "migrate",       label: "Migrator",      icon: ArrowRightLeft, badge: "SQL → SQL",   badgeColor: "text-violet-400 bg-violet-500/10" },
+  { id: "quick-convert", label: "Quick Convert", icon: Sparkles,      badge: "Image â†’ SQL", badgeColor: "text-indigo-400 bg-indigo-500/10" },
+  { id: "generate",      label: "Generate",      icon: Wand2,          badge: "Text â†’ SQL",  badgeColor: "text-violet-400 bg-violet-500/10" },
+  { id: "migrate",       label: "Migrator",      icon: ArrowRightLeft, badge: "SQL â†’ SQL",   badgeColor: "text-violet-400 bg-violet-500/10" },
 ];
 
 const mainNav = [
@@ -27,12 +27,12 @@ const mainNav = [
   { id: "profile",   label: "Profile",   icon: UserRound },
 ];
 
-// ── Shared classes ────────────────────────────────────────────────────────────
+// â”€â”€ Shared classes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // Inactive nav item: uses CSS vars so it works in both light and dark.
 const inactiveNav =
   "text-[var(--text-muted)] hover:bg-[var(--surface)] hover:text-[var(--text)]";
 
-// Active nav item — background applied via inline style using --primary so it
+// Active nav item â€” background applied via inline style using --primary so it
 // resolves to indigo in light and coral in dark automatically.
 const activeNav =
   "text-white shadow-[0_8px_24px_rgba(0,0,0,0.20)]";
@@ -41,10 +41,10 @@ const activeNav =
 const bottomHover =
   "text-[var(--text-muted)] hover:bg-[var(--surface)] hover:text-[var(--text)]";
 
-// Active nav inline style — uses CSS variable so theme drives the color
+// Active nav inline style â€” uses CSS variable so theme drives the color
 const activeStyle: React.CSSProperties = { background: "var(--primary)" };
 
-// ── NavBtn ────────────────────────────────────────────────────────────────────
+// â”€â”€ NavBtn â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function NavBtn({
   active, onClick, title, icon, label,
 }: {
@@ -70,17 +70,17 @@ function NavBtn({
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export default function Sidebar({ page, onNavigate }: SidebarProps) {
   const { user, sidebarCollapsed, setSidebarCollapsed, logout, projects: allProjects } = useStore();
   const [mobileOpen, setMobileOpen] = useState(true);
   const [toolsOpen, setToolsOpen] = useState(
-    ["quick-convert", "generate", "migrate"].includes(page)
+    ["quick-convert", "generate", "migrate", "playground"].includes(page)
   );
   const projects = allProjects.filter(p => p.ownerId === (user?.id ?? ""));
   const isAdmin = user?.role === "admin";
   const width = sidebarCollapsed ? 64 : 220;
-  const isToolPage = ["quick-convert", "generate", "migrate"].includes(page);
+  const isToolPage = ["quick-convert", "generate", "migrate", "playground"].includes(page);
 
   const handleNavigate = (id: string) => {
     onNavigate(id);
@@ -93,14 +93,14 @@ export default function Sidebar({ page, onNavigate }: SidebarProps) {
       transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
       className={cn(
         "sidebar fixed left-0 top-0 bottom-0 z-30 flex flex-col overflow-hidden",
-        // ↓ semantic var: #FFFFFF in light, #0F172A in dark
+        // â†“ semantic var: #FFFFFF in light, #0F172A in dark
         "bg-[var(--surface-sidebar)] border-r border-[var(--border)]",
         mobileOpen && "mobile-sidebar-open"
       )}
     >
-      {/* ── Logo ──────────────────────────────────────────────────────────── */}
+      {/* â”€â”€ Logo â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div className="flex items-center h-[57px] px-[14px] border-b border-[var(--border)] flex-shrink-0 gap-3">
-        {/* Logo icon — gradient in light, solid coral in dark via --primary */}
+        {/* Logo icon â€” gradient in light, solid coral in dark via --primary */}
         <div
           className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
           style={{ background: "var(--primary)" }}
@@ -138,10 +138,10 @@ export default function Sidebar({ page, onNavigate }: SidebarProps) {
         </button>
       </div>
 
-      {/* ── Nav ───────────────────────────────────────────────────────────── */}
+      {/* â”€â”€ Nav â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <nav className="flex-1 px-[10px] py-3 space-y-0.5 overflow-y-auto overflow-x-hidden">
 
-        {/* New Project — uses --primary / --primary-hover so coral in dark, indigo in light */}
+        {/* New Project â€” uses --primary / --primary-hover so coral in dark, indigo in light */}
         <button
           onClick={() => handleNavigate("projects")}
           title="New Project"
@@ -166,7 +166,7 @@ export default function Sidebar({ page, onNavigate }: SidebarProps) {
           label={!sidebarCollapsed ? "Dashboard" : null}
         />
 
-        {/* ── Tools accordion ─────────────────────────────────────────────── */}
+        {/* â”€â”€ Tools accordion â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         <div>
           <button
             onClick={() => {
@@ -249,7 +249,7 @@ export default function Sidebar({ page, onNavigate }: SidebarProps) {
             <Icon size={16} className="flex-shrink-0" />
             {!sidebarCollapsed && <span className="truncate">{label}</span>}
             {!sidebarCollapsed && id === "projects" && projects.length > 0 && (
-              /* Project count pill — subtle in both themes */
+              /* Project count pill â€” subtle in both themes */
               <span className="ml-auto text-[10px] font-bold bg-[var(--primary-light)] text-[var(--primary)] px-1.5 py-0.5 rounded-full">
                 {projects.length}
               </span>
@@ -309,7 +309,7 @@ export default function Sidebar({ page, onNavigate }: SidebarProps) {
         )}
       </nav>
 
-      {/* ── Bottom: settings + sign out + collapse ────────────────────────── */}
+      {/* â”€â”€ Bottom: settings + sign out + collapse â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div className="border-t border-[var(--border)] px-[10px] py-3 space-y-0.5 flex-shrink-0">
 
         {/* Settings */}
@@ -326,7 +326,7 @@ export default function Sidebar({ page, onNavigate }: SidebarProps) {
           {!sidebarCollapsed && <span className="text-xs">Settings</span>}
         </button>
 
-        {/* Sign Out — never active, just hover */}
+        {/* Sign Out â€” never active, just hover */}
         <button
           onClick={() => { useStore.getState().logout(); }}
           title="Sign out"
@@ -361,3 +361,4 @@ export default function Sidebar({ page, onNavigate }: SidebarProps) {
     </motion.aside>
   );
 }
+

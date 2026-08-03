@@ -169,9 +169,10 @@ export default function QuickConvertPage({ onNavigate }: { onNavigate: (p: strin
         {sub.planId !== "pro" && (
           <button
             onClick={() => onNavigate("pricing")}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold shrink-0
-              bg-gradient-to-r from-primary-600 to-primary-700 text-white
-              hover:shadow-lg hover:shadow-primary-500/25 transition-all"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold shrink-0 text-white transition-all duration-200"
+            style={{ background: "var(--primary)" }}
+            onMouseEnter={e => (e.currentTarget.style.background = "var(--primary-hover)")}
+            onMouseLeave={e => (e.currentTarget.style.background = "var(--primary)")}
           >
             Upgrade to Pro <ArrowRight size={14} />
           </button>
