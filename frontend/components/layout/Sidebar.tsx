@@ -1,4 +1,4 @@
-﻿"use client";
+﻿﻿"use client";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, FolderOpen, History, Settings, Shield,
@@ -17,6 +17,7 @@ const toolsItems = [
   { id: "quick-convert", label: "Quick Convert", icon: Sparkles,      badge: "Image â†’ SQL", badgeColor: "text-indigo-400 bg-indigo-500/10" },
   { id: "generate",      label: "Generate",      icon: Wand2,          badge: "Text â†’ SQL",  badgeColor: "text-violet-400 bg-violet-500/10" },
   { id: "migrate",       label: "Migrator",      icon: ArrowRightLeft, badge: "SQL â†’ SQL",   badgeColor: "text-violet-400 bg-violet-500/10" },
+  { id: "playground",    label: "Playground",    icon: Terminal,       badge: "SQL Editor",  badgeColor: "text-emerald-400 bg-emerald-500/10" },
 ];
 
 const mainNav = [

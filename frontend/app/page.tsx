@@ -117,19 +117,34 @@ export default function RootPage() {
 
         <main className="flex-1 pt-[57px]">
           <DatabaseScene />
-          <div className="max-w-[1280px] mx-auto px-4 sm:px-6 py-7">
+          {appPage === "playground" ? (
             <AnimatePresence mode="wait">
               <motion.div
-                key={appPage}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                transition={{ duration: 0.2 }}
+                key="playground"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15 }}
+                className="h-[calc(100vh-57px)]"
               >
                 {renderPage()}
               </motion.div>
             </AnimatePresence>
-          </div>
+          ) : (
+            <div className="max-w-[1280px] mx-auto px-4 sm:px-6 py-7">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={appPage}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  {renderPage()}
+                </motion.div>
+              </AnimatePresence>
+            </div>
+          )}
         </main>
       </div>
       <nav className="mobile-nav" aria-label="Mobile navigation">

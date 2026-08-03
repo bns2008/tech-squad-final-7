@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowRightLeft, Database, Upload, Copy, Download,
   RefreshCw, CheckCircle, AlertTriangle, FileText,
-  FileJson, ArrowRight, FileCode, Sparkles, X,
+  FileJson, ArrowRight, FileCode, Sparkles, X, Terminal,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { downloadText, downloadJSON, parseSQLStats, formatTime, cn } from "@/lib/utils";import { canConvert, conversionsLeft } from "@/lib/subscription";
@@ -162,7 +162,7 @@ function DialectPicker({
 
 // ── Main page ────────────────────────────────────────────────────────────────
 export default function MigratePage({ onNavigate }: { onNavigate: (p: string) => void }) {
-  const { getSubscription, incrementConversions, theme } = useStore();
+  const { getSubscription, incrementConversions, theme, setPlaygroundInitialSQL } = useStore();
   const sub = getSubscription();
 
   const [sourceDialect, setSourceDialect] = useState("mysql");
@@ -416,6 +416,13 @@ export default function MigratePage({ onNavigate }: { onNavigate: (p: string) =>
                 <button onClick={() => downloadJSON({ source: result.source, target: result.target, sql: result.sql }, `${baseName}.json`)}
                   className="btn-ghost text-xs px-3 py-1.5">
                   <FileJson size={12} /> .json
+                </button>
+                <button
+                  onClick={() => { setPlaygroundInitialSQL(result.sql); onNavigate("playground"); }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold ml-auto
+                    bg-gradient-to-r from-emerald-600 to-emerald-700 text-white
+                    hover:shadow-md hover:shadow-emerald-500/25 transition-all">
+                  <Terminal size={12} /> Open in Playground
                 </button>
               </>
             )}

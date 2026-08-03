@@ -13,8 +13,6 @@ import {
   Terminal,
   ChevronDown,
   ChevronUp,
-  ChevronLeft,
-  ChevronRight,
   Code2,
   Clock,
   Database,
@@ -24,11 +22,17 @@ import {
   X,
   RotateCcw,
   GitFork,
+  Table2,
+  Share2,
+  Layers,
+  GitBranch,
 } from "lucide-react";
 import { cn, downloadText } from "@/lib/utils";
+import { parseSQLSchema } from "@/lib/sqlParser";
 import { useStore } from "@/lib/store";
 import toast from "react-hot-toast";
 import ERDiagramModal from "@/components/ERDiagramModal";
+import type { DiagramType } from "@/components/ERDiagramModal";
 
 // ── Monaco editor (client-only) ──────────────────────────────────────────────
 const MonacoEditor = dynamic(
@@ -186,6 +190,9 @@ export default function PlaygroundPage() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [tablesOpen, setTablesOpen] = useState(false);
   const [erDiagramOpen, setErDiagramOpen] = useState(false);
+  const [diagramInitialTab, setDiagramInitialTab] = useState<DiagramType>("er");
+  const [diagramDropdownOpen, setDiagramDropdownOpen] = useState(false);
+  const diagramDropdownRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<unknown>(null);
   const monacoRef = useRef<unknown>(null);
 
@@ -264,8 +271,17 @@ export default function PlaygroundPage() {
         () => {
           const currentSQL = editor.getValue();
           const res = mockExecute(currentSQL);
+          res.sql = currentSQL;
           setResult(res);
           setOutputOpen(true);
+          if (currentSQL.trim()) {
+            setHistory(prev => [{
+              id: Date.now().toString(),
+              sql: currentSQL,
+              result: res,
+              timestamp: new Date(),
+            }, ...prev].slice(0, 50));
+          }
           if (res.status === "success") {
             toast.success("Query executed successfully", { id: "sql-run" });
           } else {
@@ -311,6 +327,17 @@ export default function PlaygroundPage() {
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [sql]);
+
+  // ── Close diagram dropdown on outside click ──────────────────────────────
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (diagramDropdownRef.current && !diagramDropdownRef.current.contains(e.target as Node)) {
+        setDiagramDropdownOpen(false);
+      }
+    };
+    if (diagramDropdownOpen) document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [diagramDropdownOpen]);
 
   // ── Actions ───────────────────────────────────────────────────────────────
   const runSQL = useCallback(() => {
@@ -468,17 +495,72 @@ export default function PlaygroundPage() {
             <span className="hidden sm:inline">Format SQL</span>
           </motion.button>
 
-          {/* Diagram Button */}
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.96 }}
-            onClick={() => setErDiagramOpen(true)}
-            className="btn-ghost btn-sm gap-1.5"
-            title="Generate Diagram"
-          >
-            <GitFork size={13} />
-            <span className="hidden sm:inline">Diagram</span>
-          </motion.button>
+          {/* Diagram Dropdown Button */}
+          <div className="relative" ref={diagramDropdownRef}>
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.96 }}
+              onClick={() => setDiagramDropdownOpen((v) => !v)}
+              className={cn("btn-ghost btn-sm gap-1.5", diagramDropdownOpen && "bg-[var(--surface)]")}
+              title="Generate Diagram"
+            >
+              <GitFork size={13} />
+              <span className="hidden sm:inline">Diagram</span>
+              <ChevronDown
+                size={11}
+                className={cn("transition-transform duration-200", diagramDropdownOpen && "rotate-180")}
+              />
+            </motion.button>
+
+            <AnimatePresence>
+              {diagramDropdownOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: -6, scale: 0.97 }}
+                  animate={{ opacity: 1, y: 0,  scale: 1    }}
+                  exit={{    opacity: 0, y: -6, scale: 0.97 }}
+                  transition={{ duration: 0.15, ease: "easeOut" }}
+                  className="absolute top-full mt-1.5 right-0 z-50 rounded-xl border shadow-xl overflow-hidden"
+                  style={{
+                    background: "var(--card)",
+                    borderColor: "var(--border)",
+                    minWidth: 200,
+                  }}
+                >
+                  {([
+                    { type: "er"        as DiagramType, label: "ER Diagram",    icon: Table2,    color: "#2563EB", desc: "Tables & foreign keys"         },
+                    { type: "flowchart" as DiagramType, label: "Flowchart",      icon: GitFork,   color: "#059669", desc: "Schema creation flow"          },
+                    { type: "dfd0"      as DiagramType, label: "DFD Level 0",    icon: Share2,    color: "#D97706", desc: "System context diagram"         },
+                    { type: "dfd1"      as DiagramType, label: "DFD Level 1",    icon: Layers,    color: "#7C3AED", desc: "Processes & data stores"        },
+                    { type: "class"     as DiagramType, label: "Class Diagram",  icon: GitBranch, color: "#0284C7", desc: "OOP classes & methods"          },
+                  ]).map(({ type, label, icon: Icon, color, desc }, i) => (
+                    <motion.button
+                      key={type}
+                      initial={{ opacity: 0, x: -6 }}
+                      animate={{ opacity: 1,  x: 0  }}
+                      transition={{ delay: i * 0.04 }}
+                      onClick={() => {
+                        setDiagramInitialTab(type);
+                        setErDiagramOpen(true);
+                        setDiagramDropdownOpen(false);
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-[var(--surface)]"
+                    >
+                      <div
+                        className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                        style={{ background: color + "20", color }}
+                      >
+                        <Icon size={13} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[12px] font-semibold text-[var(--text)] leading-tight">{label}</p>
+                        <p className="text-[10px] text-[var(--text-subtle)] leading-tight">{desc}</p>
+                      </div>
+                    </motion.button>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
 
           <motion.button
             whileHover={{ scale: 1.02 }}
@@ -564,7 +646,7 @@ export default function PlaygroundPage() {
       </motion.div>
 
       {/* ── Editor + Sidebars + Output ─────────────────────────────────────────────────── */}
-      <div className="flex flex-1 overflow-hidden flex-col lg:flex-row">
+      <div className="flex flex-1 overflow-hidden" style={{ minHeight: 0 }}>
         
         {/* ── Monaco Editor area ───────────────────────────────────────────── */}
         <motion.div
@@ -667,12 +749,13 @@ export default function PlaygroundPage() {
       <AnimatePresence>
         {historyOpen && (
           <motion.div
-            initial={{ width: 0, opacity: 0 }}
-            animate={{ width: historyOpen ? 320 : 0, opacity: 1 }}
-            exit={{ width: 0, opacity: 0 }}
-            transition={{ duration: 0.2, ease: "easeInOut" }}
-            className="border-l border-[var(--border)] flex flex-col overflow-hidden lg:flex-shrink-0 w-full lg:w-[320px] mobile-panel-responsive"
-            style={{ background: "var(--card)" }}
+            key="history-panel"
+            initial={{ x: "100%", opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: "100%", opacity: 0 }}
+            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+            className="border-l border-[var(--border)] flex flex-col flex-shrink-0 overflow-hidden"
+            style={{ width: 300, background: "var(--card)" }}
           >
             <div className="flex items-center justify-between px-3 sm:px-4 py-3 border-b border-[var(--border)]">
               <div className="flex items-center gap-2">
@@ -738,7 +821,7 @@ export default function PlaygroundPage() {
                         </div>
                       </div>
                       <p className="text-[10px] text-[var(--text-muted)] font-mono line-clamp-2 pl-5">
-                        {entry.sql.split("\n")[0].substring(0, 60)}...
+                        {entry.sql.split("\n").find(l => l.trim() && !l.trim().startsWith("--"))?.substring(0, 60) ?? entry.sql.substring(0, 60)}
                       </p>
                     </motion.button>
                   ))}
@@ -753,12 +836,13 @@ export default function PlaygroundPage() {
       <AnimatePresence>
         {tablesOpen && (
           <motion.div
-            initial={{ width: 0, opacity: 0 }}
-            animate={{ width: 280, opacity: 1 }}
-            exit={{ width: 0, opacity: 0 }}
-            transition={{ duration: 0.2, ease: "easeInOut" }}
-            className="border-l border-[var(--border)] flex flex-col overflow-hidden lg:flex-shrink-0 w-full lg:w-[280px] mobile-panel-responsive"
-            style={{ background: "var(--card)" }}
+            key="tables-panel"
+            initial={{ x: "100%", opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: "100%", opacity: 0 }}
+            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+            className="border-l border-[var(--border)] flex flex-col flex-shrink-0 overflow-hidden"
+            style={{ width: 260, background: "var(--card)" }}
           >
             <div className="flex items-center justify-between px-3 sm:px-4 py-3 border-b border-[var(--border)]">
               <div className="flex items-center gap-2">
@@ -780,27 +864,56 @@ export default function PlaygroundPage() {
                 <div className="flex flex-col items-center justify-center h-full gap-3 p-6 text-center">
                   <Database size={24} className="text-[var(--text-subtle)]" />
                   <p className="text-xs text-[var(--text-muted)]">No tables detected</p>
-                  <p className="text-[10px] text-[var(--text-subtle)]">Create tables to see them here</p>
+                  <p className="text-[10px] text-[var(--text-subtle)]">Write CREATE TABLE to see them here</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 lg:grid-cols-1 gap-2">
-                  {currentTables.map((table, idx) => (
-                    <motion.div
-                      key={table}
-                      initial={{ opacity: 0, scale: 0.9 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: idx * 0.05, duration: 0.2 }}
-                      className="flex items-center gap-2 p-2.5 rounded-lg border border-[var(--border)] bg-[var(--surface)]"
-                    >
-                      <div className="w-7 h-7 rounded-lg bg-primary-50 dark:bg-primary-900/30 flex items-center justify-center flex-shrink-0">
-                        <Table size={12} className="text-primary-600" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-[var(--text)] truncate">{table}</p>
-                        <p className="text-[10px] text-[var(--text-subtle)]">Table</p>
-                      </div>
-                    </motion.div>
-                  ))}
+                <div className="space-y-2">
+                  {(() => {
+                    const parsed = parseSQLSchema(sql);
+                    return parsed.tables.map((table, idx) => (
+                      <motion.div
+                        key={table.name}
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: idx * 0.04, duration: 0.18 }}
+                        className="rounded-lg border border-[var(--border)] overflow-hidden"
+                        style={{ background: "var(--surface)" }}
+                      >
+                        {/* Table header */}
+                        <div className="flex items-center gap-2 px-3 py-2 border-b border-[var(--border)]"
+                          style={{ background: "var(--card)" }}>
+                          <div className="w-5 h-5 rounded flex items-center justify-center flex-shrink-0"
+                            style={{ background: "var(--primary-light)" }}>
+                            <Table size={10} style={{ color: "var(--primary)" }} />
+                          </div>
+                          <span className="text-[11px] font-bold text-[var(--text)] truncate flex-1">{table.name}</span>
+                          <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-[var(--border)] text-[var(--text-muted)]">
+                            {table.columns.length} cols
+                          </span>
+                        </div>
+                        {/* Columns */}
+                        <div className="divide-y divide-[var(--border)]">
+                          {table.columns.map((col) => (
+                            <div key={col.name} className="flex items-center gap-2 px-3 py-1.5">
+                              <div className="w-[30px] flex-shrink-0">
+                                {col.isPrimaryKey && col.isForeignKey && (
+                                  <span className="text-[8px] font-bold px-1 py-0.5 rounded bg-purple-100 text-purple-700">PK/FK</span>
+                                )}
+                                {col.isPrimaryKey && !col.isForeignKey && (
+                                  <span className="text-[8px] font-bold px-1 py-0.5 rounded bg-amber-100 text-amber-700">PK</span>
+                                )}
+                                {col.isForeignKey && !col.isPrimaryKey && (
+                                  <span className="text-[8px] font-bold px-1 py-0.5 rounded bg-blue-100 text-blue-700">FK</span>
+                                )}
+                              </div>
+                              <span className="text-[10px] font-medium text-[var(--text)] truncate flex-1">{col.name}</span>
+                              <span className="text-[9px] font-mono text-[var(--text-subtle)] flex-shrink-0">{col.type}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </motion.div>
+                    ));
+                  })()}
                 </div>
               )}
             </div>
@@ -815,6 +928,7 @@ export default function PlaygroundPage() {
         isOpen={erDiagramOpen}
         onClose={() => setErDiagramOpen(false)}
         theme={theme}
+        initialTab={diagramInitialTab}
       />
     </div>
   );

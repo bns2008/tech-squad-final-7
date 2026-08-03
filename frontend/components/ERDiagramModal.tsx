@@ -407,9 +407,9 @@ function DiagramCanvas({ sql, diagramType, isDark, onClose }: {
 // MODAL SHELL — owns activeType state; keys ReactFlowProvider+DiagramCanvas
 // so the entire React + ReactFlow tree remounts on every tab switch.
 // ─────────────────────────────────────────────────────────────────────────────
-function ModalShell({ sql, theme, onClose }: { sql: string; theme: "light" | "dark"; onClose: () => void }) {
+function ModalShell({ sql, theme, onClose, initialTab = "er" }: { sql: string; theme: "light" | "dark"; onClose: () => void; initialTab?: DiagramType }) {
   const isDark = theme === "dark";
-  const [activeType, setActiveType] = useState<DiagramType>("er");
+  const [activeType, setActiveType] = useState<DiagramType>(initialTab);
   const cfg    = DIAGRAM_CONFIG[activeType];
   const accent = isDark ? cfg.darkColor : cfg.color;
   const Icon   = cfg.icon;
@@ -433,29 +433,7 @@ function ModalShell({ sql, theme, onClose }: { sql: string; theme: "light" | "da
         </button>
       </div>
 
-      {/* Tabs */}
-      <div className={cn("flex items-center gap-1 px-4 py-2 border-b flex-shrink-0 overflow-x-auto", isDark ? "border-[rgba(255,255,255,0.06)] bg-[#1C1718]" : "border-gray-100 bg-gray-50")}>
-        {(Object.entries(DIAGRAM_CONFIG) as [DiagramType, typeof cfg][]).map(([type, c]) => {
-          const TabIcon  = c.icon;
-          const tabColor = isDark ? c.darkColor : c.color;
-          const isActive = activeType === type;
-          return (
-            <button
-              key={type}
-              onClick={() => setActiveType(type)}
-              className={cn("flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold whitespace-nowrap transition-all flex-shrink-0 border",
-                isActive
-                  ? "text-white border-transparent shadow-sm"
-                  : isDark ? "text-[var(--text-muted)] border-transparent hover:bg-[var(--surface)]" : "text-gray-500 border-transparent hover:bg-gray-100"
-              )}
-              style={isActive ? { background: tabColor } : undefined}
-            >
-              <TabIcon size={12} />
-              {c.label}
-            </button>
-          );
-        })}
-      </div>
+      {/* Tabs removed — diagram type selected from toolbar dropdown */}
 
       {/* Canvas — key forces full remount on tab switch */}
       <ReactFlowProvider key={activeType}>
@@ -472,8 +450,8 @@ function ModalShell({ sql, theme, onClose }: { sql: string; theme: "light" | "da
 }
 
 // ── Public export ─────────────────────────────────────────────────────────────
-export default function ERDiagramModal({ sql, isOpen, onClose, theme }: {
-  sql: string; isOpen: boolean; onClose: () => void; theme: "light" | "dark";
+export default function ERDiagramModal({ sql, isOpen, onClose, theme, initialTab = "er" }: {
+  sql: string; isOpen: boolean; onClose: () => void; theme: "light" | "dark"; initialTab?: DiagramType;
 }) {
   return (
     <AnimatePresence>
@@ -492,7 +470,7 @@ export default function ERDiagramModal({ sql, isOpen, onClose, theme }: {
             className={cn("fixed inset-4 sm:inset-6 md:inset-8 z-50 rounded-2xl overflow-hidden flex flex-col shadow-2xl", theme === "dark" ? "bg-[#1C1718]" : "bg-white")}
             onClick={(e) => e.stopPropagation()}
           >
-            <ModalShell sql={sql} theme={theme} onClose={onClose} />
+            <ModalShell sql={sql} theme={theme} onClose={onClose} initialTab={initialTab} />
           </motion.div>
         </>
       )}
