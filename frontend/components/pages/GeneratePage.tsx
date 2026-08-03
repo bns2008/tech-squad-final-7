@@ -6,7 +6,7 @@ import {
   Copy, Download, RefreshCw, CheckCircle,
   AlertTriangle, ArrowRight, FileText, FileJson,
   Sparkles, ChevronDown, ChevronUp, Lightbulb,
-  FolderOpen, Plus, X, Save, GitFork, Share2, Layers,
+  FolderOpen, Plus, X, Save, GitFork, Share2, Layers, Terminal,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { parseSQLStats, downloadText, downloadJSON, genId, formatTime, cn } from "@/lib/utils";
@@ -116,7 +116,7 @@ interface GenerateResult {
 }
 
 export default function GeneratePage({ onNavigate }: { onNavigate: (p: string) => void }) {
-  const { getSubscription, incrementConversions, theme, user, projects, upsertProject, upsertFile, setActiveProject } = useStore();
+  const { getSubscription, incrementConversions, theme, user, projects, upsertProject, upsertFile, setActiveProject, setPlaygroundInitialSQL } = useStore();
   const sub = getSubscription();
   const ownerId = user?.id ?? "";
   const myProjects = projects.filter(p => p.ownerId === ownerId);
@@ -733,6 +733,13 @@ export default function GeneratePage({ onNavigate }: { onNavigate: (p: string) =
                   onClick={() => downloadJSON({ description: result.description, sql: result.sql, mermaid: result.mermaid, stats: result.stats }, `${baseName}.json`)}
                   className="btn-ghost text-sm px-4 py-2">
                   <FileJson size={14} /> .json
+                </button>
+                <button
+                  onClick={() => { setPlaygroundInitialSQL(result.sql); onNavigate("playground"); }}
+                  className="flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-semibold
+                    bg-gradient-to-r from-emerald-600 to-emerald-700 text-white
+                    hover:shadow-lg hover:shadow-emerald-500/25 transition-all">
+                  <Terminal size={14} /> Open in Playground
                 </button>
                 <button
                   onClick={() => { navigator.clipboard.writeText(result.mermaid); toast.success("Diagram copied!"); }}

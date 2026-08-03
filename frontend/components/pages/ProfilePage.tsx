@@ -257,9 +257,10 @@ export default function ProfilePage({ onNavigate }: { onNavigate: (p: string) =>
               </button>
               <button
                 onClick={() => onNavigate("pricing")}
-                className="w-full flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold
-                  bg-gradient-to-r from-primary-600 to-primary-700 text-white
-                  hover:shadow-lg hover:shadow-primary-500/25 transition-all"
+                className="w-full flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-all duration-200"
+                style={{ background: "var(--primary)" }}
+                onMouseEnter={e => (e.currentTarget.style.background = "var(--primary-hover)")}
+                onMouseLeave={e => (e.currentTarget.style.background = "var(--primary)")}
               >
                 {sub.planId === "pro" ? "Manage Subscription" : "Upgrade to Pro"}
                 <ArrowRight size={14} />

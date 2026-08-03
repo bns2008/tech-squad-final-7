@@ -93,7 +93,12 @@ interface AdminSlice {
   setActivityLogs: (l: ActivityLog[]) => void;
 }
 
-type Store = AuthSlice & UISlice & SubscriptionSlice & QuickConvertSlice & LegacyAnalysisSlice & ProjectsSlice & AdminSlice;
+interface PlaygroundSlice {
+  playgroundInitialSQL: string | null;
+  setPlaygroundInitialSQL: (sql: string | null) => void;
+}
+
+type Store = AuthSlice & UISlice & SubscriptionSlice & QuickConvertSlice & LegacyAnalysisSlice & ProjectsSlice & AdminSlice & PlaygroundSlice;
 
 export const useStore = create<Store>()(
   persist(
@@ -249,6 +254,10 @@ export const useStore = create<Store>()(
       activityLogs: [],
       setAdminUsers: (adminUsers) => set({ adminUsers }),
       setActivityLogs: (activityLogs) => set({ activityLogs }),
+
+      // ── Playground ──────────────────────────────────────────────────────────
+      playgroundInitialSQL: null,
+      setPlaygroundInitialSQL: (sql) => set({ playgroundInitialSQL: sql }),
     }),
     {
       name: "er-ai-studio-v4",

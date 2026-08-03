@@ -1,12 +1,12 @@
-"use client";
+﻿"use client";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, FolderOpen, History, Settings, Shield,
-  ChevronLeft, ChevronRight, Database, LogOut, Plus, Sparkles, CreditCard, UserRound, X, Wand2, ArrowRightLeft, Wrench, ChevronDown
+  ChevronLeft, ChevronRight, Database, LogOut, Plus, Sparkles, CreditCard, UserRound, X, Wand2, ArrowRightLeft, Wrench, ChevronDown, Terminal
 } from "lucide-react";
 import { useState } from "react";
 import { useStore } from "@/lib/store";
-import { cn, initials } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 
 interface SidebarProps {
   page: string;
@@ -14,9 +14,10 @@ interface SidebarProps {
 }
 
 const toolsItems = [
-  { id: "quick-convert", label: "Quick Convert", icon: Sparkles,      badge: "Image → SQL", badgeColor: "text-black bg-black/10" },
-  { id: "generate",      label: "Generate",      icon: Wand2,          badge: "Text → SQL",  badgeColor: "text-black bg-black/10" },
-  { id: "migrate",       label: "Migrator",      icon: ArrowRightLeft, badge: "SQL → SQL",   badgeColor: "text-black bg-black/10" },
+  { id: "quick-convert", label: "Quick Convert", icon: Sparkles,      badge: "Image → SQL" },
+  { id: "generate",      label: "Generate",      icon: Wand2,          badge: "Text → SQL"  },
+  { id: "migrate",       label: "Migrator",      icon: ArrowRightLeft, badge: "SQL → SQL"   },
+  { id: "playground",    label: "Playground",    icon: Terminal,       badge: "SQL Editor"  },
 ];
 
 const mainNav = [
@@ -28,25 +29,17 @@ const mainNav = [
 ];
 
 // ── Shared classes ────────────────────────────────────────────────────────────
-// Inactive nav item: uses CSS vars so it works in both light and dark.
 const inactiveNav =
   "text-[var(--text-muted)] hover:bg-[var(--surface)] hover:text-[var(--text)]";
 
-// Active nav item — text color differs per theme:
-//   light → white text on indigo/blue background
-//   dark  → black text on pista/green background
-// We apply the text color conditionally via a helper below.
-const activeNavBase =
-  "shadow-[0_8px_24px_rgba(0,0,0,0.20)]";
+const activeNavBase = "shadow-[0_8px_24px_rgba(0,0,0,0.20)]";
 
-// Bottom-section hover (Settings / Sign Out / Collapse)
 const bottomHover =
   "text-[var(--text-muted)] hover:bg-[var(--surface)] hover:text-[var(--text)]";
 
-// Active nav inline style — uses CSS variable so theme drives the color
 const activeStyle: React.CSSProperties = { background: "var(--primary)" };
 
-// Returns the correct text color class for active items based on theme
+// light theme → white text on blue/indigo; dark theme → black text on pista/green
 function activeTextColor(theme: string) {
   return theme === "dark" ? "text-black" : "text-white";
 }
@@ -80,16 +73,18 @@ function NavBtn({
 
 // ─────────────────────────────────────────────────────────────────────────────
 export default function Sidebar({ page, onNavigate }: SidebarProps) {
-  const { user, sidebarCollapsed, setSidebarCollapsed, logout, projects: allProjects, theme } = useStore();
+  const { user, sidebarCollapsed, setSidebarCollapsed, projects: allProjects, theme } = useStore();
   const activeNav = `${activeNavBase} ${activeTextColor(theme)}`;
+
   const [mobileOpen, setMobileOpen] = useState(true);
   const [toolsOpen, setToolsOpen] = useState(
-    ["quick-convert", "generate", "migrate"].includes(page)
+    ["quick-convert", "generate", "migrate", "playground"].includes(page)
   );
+
   const projects = allProjects.filter(p => p.ownerId === (user?.id ?? ""));
   const isAdmin = user?.role === "admin";
   const width = sidebarCollapsed ? 64 : 220;
-  const isToolPage = ["quick-convert", "generate", "migrate"].includes(page);
+  const isToolPage = ["quick-convert", "generate", "migrate", "playground"].includes(page);
 
   const handleNavigate = (id: string) => {
     onNavigate(id);
@@ -102,14 +97,12 @@ export default function Sidebar({ page, onNavigate }: SidebarProps) {
       transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
       className={cn(
         "sidebar fixed left-0 top-0 bottom-0 z-30 flex flex-col overflow-hidden",
-        // ↓ semantic var: #FFFFFF in light, #0F172A in dark
         "bg-[var(--surface-sidebar)] border-r border-[var(--border)]",
         mobileOpen && "mobile-sidebar-open"
       )}
     >
       {/* ── Logo ──────────────────────────────────────────────────────────── */}
       <div className="flex items-center h-[57px] px-[14px] border-b border-[var(--border)] flex-shrink-0 gap-3">
-        {/* Logo icon — gradient in light, solid coral in dark via --primary */}
         <div
           className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
           style={{ background: "var(--primary)" }}
@@ -126,11 +119,9 @@ export default function Sidebar({ page, onNavigate }: SidebarProps) {
               transition={{ duration: 0.2 }}
               className="min-w-0"
             >
-              {/* App name: primary text color */}
               <p className="font-bold text-[14px] text-[var(--text)] whitespace-nowrap leading-tight">
                 ER AI Studio
               </p>
-              {/* Subtitle: muted text color */}
               <p className="text-[10px] text-[var(--text-subtle)] whitespace-nowrap leading-tight mt-0.5">
                 Schema Intelligence
               </p>
@@ -150,13 +141,13 @@ export default function Sidebar({ page, onNavigate }: SidebarProps) {
       {/* ── Nav ───────────────────────────────────────────────────────────── */}
       <nav className="flex-1 px-[10px] py-3 space-y-0.5 overflow-y-auto overflow-x-hidden">
 
-        {/* New Project — uses --primary / --primary-hover so coral in dark, indigo in light */}
+        {/* New Project */}
         <button
           onClick={() => handleNavigate("projects")}
           title="New Project"
           className={cn(
-            "w-full flex items-center gap-3 px-[18px] py-[11px] rounded-[14px] mb-3 text-sm font-semibold",
-            activeTextColor(theme), "transition-all duration-200",
+            "w-full flex items-center gap-3 px-[18px] py-[11px] rounded-[14px] mb-3 text-sm font-semibold transition-all duration-200",
+            activeTextColor(theme),
           )}
           style={{ background: "var(--primary)" }}
           onMouseEnter={e => (e.currentTarget.style.background = "var(--primary-hover)")}
@@ -215,7 +206,6 @@ export default function Sidebar({ page, onNavigate }: SidebarProps) {
                 transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
                 className="overflow-hidden"
               >
-                {/* Sub-tree border uses --border so it's #E5E7EB light / rgba white dark */}
                 <div className="mt-1 ml-3 pl-3 border-l border-[var(--border)] space-y-0.5 pb-1">
                   {toolsItems.map(({ id, label, icon: Icon, badge }) => (
                     <button
@@ -341,7 +331,7 @@ export default function Sidebar({ page, onNavigate }: SidebarProps) {
           {!sidebarCollapsed && <span className="text-xs">Settings</span>}
         </button>
 
-        {/* Sign Out — never active, just hover */}
+        {/* Sign Out */}
         <button
           onClick={() => { useStore.getState().logout(); }}
           title="Sign out"

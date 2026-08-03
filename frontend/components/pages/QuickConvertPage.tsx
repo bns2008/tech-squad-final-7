@@ -6,7 +6,7 @@ import {
   Upload, FileCode, Clock, Copy, Download, RefreshCw,
   CheckCircle, AlertTriangle, Sparkles,
   FileText, FileJson, ArrowRight, Database,
-  Table2, GitBranch, Timer,
+  Table2, GitBranch, Timer, Terminal,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { parseSQLStats, downloadText, downloadJSON, genId, timeAgo, formatTime, cn } from "@/lib/utils";
@@ -50,7 +50,7 @@ export default function QuickConvertPage({ onNavigate }: { onNavigate: (p: strin
   const {
     getSubscription, incrementConversions,
     quickHistory, addQuickResult, clearQuickHistory,
-    theme, user,
+    theme, user, setPlaygroundInitialSQL,
   } = useStore();
 
   const sub = getSubscription();
@@ -169,9 +169,10 @@ export default function QuickConvertPage({ onNavigate }: { onNavigate: (p: strin
         {sub.planId !== "pro" && (
           <button
             onClick={() => onNavigate("pricing")}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold shrink-0
-              bg-gradient-to-r from-primary-600 to-primary-700 text-white
-              hover:shadow-lg hover:shadow-primary-500/25 transition-all"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold shrink-0 text-white transition-all duration-200"
+            style={{ background: "var(--primary)" }}
+            onMouseEnter={e => (e.currentTarget.style.background = "var(--primary-hover)")}
+            onMouseLeave={e => (e.currentTarget.style.background = "var(--primary)")}
           >
             Upgrade to Pro <ArrowRight size={14} />
           </button>
@@ -376,6 +377,14 @@ export default function QuickConvertPage({ onNavigate }: { onNavigate: (p: strin
                       onClick={() => downloadJSON({ filename: qcResult.filename, sql: qcResult.sql, stats: qcResult.stats }, `${qcResult.filename.replace(/\.[^.]+$/, "")}.json`)}
                       className="btn-ghost text-sm px-4 py-2">
                       <FileJson size={14} /> .json
+                    </button>
+                    <button
+                      onClick={() => { setPlaygroundInitialSQL(qcResult.sql); onNavigate("playground"); }}
+                      className="flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-semibold ml-auto
+                        bg-gradient-to-r from-emerald-600 to-emerald-700 text-white
+                        hover:shadow-lg hover:shadow-emerald-500/25 transition-all"
+                    >
+                      <Terminal size={14} /> Open in Playground
                     </button>
                   </div>
                 </div>

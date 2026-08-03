@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -23,6 +23,7 @@ import PricingPage from "@/components/pages/PricingPage";
 import QuickConvertPage from "@/components/pages/QuickConvertPage";
 import GeneratePage from "@/components/pages/GeneratePage";
 import MigratePage from "@/components/pages/MigratePage";
+import PlaygroundPage from "@/app/playground/page";
 import ProfilePage from "@/components/pages/ProfilePage";
 
 import { useStore } from "@/lib/store";
@@ -32,7 +33,7 @@ import { LayoutDashboard, FolderOpen, History, Settings, Shield } from "lucide-r
 const DatabaseScene = dynamic(() => import("@/components/ambient/DatabaseScene"), { ssr: false });
 
 type AuthPage = "login" | "register" | "forgot";
-type AppPage  = "dashboard" | "projects" | "project-detail" | "history" | "quick-convert" | "generate" | "migrate" | "pricing" | "profile" | "settings" | "admin";
+type AppPage  = "dashboard" | "projects" | "project-detail" | "history" | "quick-convert" | "generate" | "migrate" | "playground" | "pricing" | "profile" | "settings" | "admin";
 
 export default function RootPage() {
   const { isAuthenticated, user, sidebarCollapsed } = useStore();
@@ -46,7 +47,7 @@ export default function RootPage() {
 
   if (!mounted) return null;
 
-  // ── Not logged in: show auth screens ──────────────────────────────────────
+  // â”€â”€ Not logged in: show auth screens â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if (!isAuthenticated) {
     return (
       <AuthLayout>
@@ -77,7 +78,7 @@ export default function RootPage() {
     );
   }
 
-  // ── Logged in: main app ────────────────────────────────────────────────────
+  // â”€â”€ Logged in: main app â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const ml = sidebarCollapsed ? 64 : 220;
 
   const navigate = (page: string) => {
@@ -95,6 +96,7 @@ export default function RootPage() {
       case "quick-convert":  return <QuickConvertPage onNavigate={navigate} />;
       case "generate":       return <GeneratePage onNavigate={navigate} />;
       case "migrate":        return <MigratePage onNavigate={navigate} />;
+      case "playground":     return <PlaygroundPage />;
       case "pricing":        return <PricingPage />;
       case "profile":        return <ProfilePage onNavigate={navigate} />;
       case "settings":       return <SettingsPage />;
@@ -115,19 +117,34 @@ export default function RootPage() {
 
         <main className="flex-1 pt-[57px]">
           <DatabaseScene />
-          <div className="max-w-[1280px] mx-auto px-4 sm:px-6 py-7">
+          {appPage === "playground" ? (
             <AnimatePresence mode="wait">
               <motion.div
-                key={appPage}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                transition={{ duration: 0.2 }}
+                key="playground"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15 }}
+                className="h-[calc(100vh-57px)]"
               >
                 {renderPage()}
               </motion.div>
             </AnimatePresence>
-          </div>
+          ) : (
+            <div className="max-w-[1280px] mx-auto px-4 sm:px-6 py-7">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={appPage}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  {renderPage()}
+                </motion.div>
+              </AnimatePresence>
+            </div>
+          )}
         </main>
       </div>
       <nav className="mobile-nav" aria-label="Mobile navigation">
@@ -140,3 +157,4 @@ export default function RootPage() {
     </div>
   );
 }
+
