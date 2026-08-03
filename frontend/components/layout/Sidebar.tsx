@@ -1,4 +1,4 @@
-﻿﻿"use client";
+﻿"use client";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, FolderOpen, History, Settings, Shield,
@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { useStore } from "@/lib/store";
-import { cn, initials } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 
 interface SidebarProps {
   page: string;
@@ -14,10 +14,10 @@ interface SidebarProps {
 }
 
 const toolsItems = [
-  { id: "quick-convert", label: "Quick Convert", icon: Sparkles,      badge: "Image â†’ SQL", badgeColor: "text-indigo-400 bg-indigo-500/10" },
-  { id: "generate",      label: "Generate",      icon: Wand2,          badge: "Text â†’ SQL",  badgeColor: "text-violet-400 bg-violet-500/10" },
-  { id: "migrate",       label: "Migrator",      icon: ArrowRightLeft, badge: "SQL â†’ SQL",   badgeColor: "text-violet-400 bg-violet-500/10" },
-  { id: "playground",    label: "Playground",    icon: Terminal,       badge: "SQL Editor",  badgeColor: "text-emerald-400 bg-emerald-500/10" },
+  { id: "quick-convert", label: "Quick Convert", icon: Sparkles,      badge: "Image → SQL" },
+  { id: "generate",      label: "Generate",      icon: Wand2,          badge: "Text → SQL"  },
+  { id: "migrate",       label: "Migrator",      icon: ArrowRightLeft, badge: "SQL → SQL"   },
+  { id: "playground",    label: "Playground",    icon: Terminal,       badge: "SQL Editor"  },
 ];
 
 const mainNav = [
@@ -29,32 +29,32 @@ const mainNav = [
   { id: "profile",   label: "Profile",   icon: UserRound },
 ];
 
-// â”€â”€ Shared classes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Inactive nav item: uses CSS vars so it works in both light and dark.
+// ── Shared classes ────────────────────────────────────────────────────────────
 const inactiveNav =
   "text-[var(--text-muted)] hover:bg-[var(--surface)] hover:text-[var(--text)]";
 
-// Active nav item â€” background applied via inline style using --primary so it
-// resolves to indigo in light and coral in dark automatically.
-const activeNav =
-  "text-white shadow-[0_8px_24px_rgba(0,0,0,0.20)]";
+const activeNavBase = "shadow-[0_8px_24px_rgba(0,0,0,0.20)]";
 
-// Bottom-section hover (Settings / Sign Out / Collapse)
 const bottomHover =
   "text-[var(--text-muted)] hover:bg-[var(--surface)] hover:text-[var(--text)]";
 
-// Active nav inline style â€” uses CSS variable so theme drives the color
 const activeStyle: React.CSSProperties = { background: "var(--primary)" };
 
-// â”€â”€ NavBtn â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// light theme → white text on blue/indigo; dark theme → black text on pista/green
+function activeTextColor(theme: string) {
+  return theme === "dark" ? "text-black" : "text-white";
+}
+
+// ── NavBtn ────────────────────────────────────────────────────────────────────
 function NavBtn({
-  active, onClick, title, icon, label,
+  active, onClick, title, icon, label, activeClass,
 }: {
   active: boolean;
   onClick: () => void;
   title: string;
   icon: React.ReactNode;
   label: React.ReactNode;
+  activeClass: string;
 }) {
   return (
     <button
@@ -62,7 +62,7 @@ function NavBtn({
       title={title}
       className={cn(
         "w-full flex items-center gap-3 px-[18px] py-[11px] rounded-[12px] text-sm font-medium transition-all duration-200",
-        active ? activeNav : inactiveNav,
+        active ? activeClass : inactiveNav,
       )}
       style={active ? activeStyle : undefined}
     >
@@ -72,13 +72,16 @@ function NavBtn({
   );
 }
 
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─────────────────────────────────────────────────────────────────────────────
 export default function Sidebar({ page, onNavigate }: SidebarProps) {
-  const { user, sidebarCollapsed, setSidebarCollapsed, logout, projects: allProjects } = useStore();
+  const { user, sidebarCollapsed, setSidebarCollapsed, projects: allProjects, theme } = useStore();
+  const activeNav = `${activeNavBase} ${activeTextColor(theme)}`;
+
   const [mobileOpen, setMobileOpen] = useState(true);
   const [toolsOpen, setToolsOpen] = useState(
     ["quick-convert", "generate", "migrate", "playground"].includes(page)
   );
+
   const projects = allProjects.filter(p => p.ownerId === (user?.id ?? ""));
   const isAdmin = user?.role === "admin";
   const width = sidebarCollapsed ? 64 : 220;
@@ -95,14 +98,12 @@ export default function Sidebar({ page, onNavigate }: SidebarProps) {
       transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
       className={cn(
         "sidebar fixed left-0 top-0 bottom-0 z-30 flex flex-col overflow-hidden",
-        // â†“ semantic var: #FFFFFF in light, #0F172A in dark
         "bg-[var(--surface-sidebar)] border-r border-[var(--border)]",
         mobileOpen && "mobile-sidebar-open"
       )}
     >
-      {/* â”€â”€ Logo â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ── Logo ──────────────────────────────────────────────────────────── */}
       <div className="flex items-center h-[57px] px-[14px] border-b border-[var(--border)] flex-shrink-0 gap-3">
-        {/* Logo icon â€” gradient in light, solid coral in dark via --primary */}
         <div
           className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
           style={{ background: "var(--primary)" }}
@@ -119,11 +120,9 @@ export default function Sidebar({ page, onNavigate }: SidebarProps) {
               transition={{ duration: 0.2 }}
               className="min-w-0"
             >
-              {/* App name: primary text color */}
               <p className="font-bold text-[14px] text-[var(--text)] whitespace-nowrap leading-tight">
                 ER AI Studio
               </p>
-              {/* Subtitle: muted text color */}
               <p className="text-[10px] text-[var(--text-subtle)] whitespace-nowrap leading-tight mt-0.5">
                 Schema Intelligence
               </p>
@@ -140,16 +139,16 @@ export default function Sidebar({ page, onNavigate }: SidebarProps) {
         </button>
       </div>
 
-      {/* â”€â”€ Nav â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ── Nav ───────────────────────────────────────────────────────────── */}
       <nav className="flex-1 px-[10px] py-3 space-y-0.5 overflow-y-auto overflow-x-hidden">
 
-        {/* New Project â€” uses --primary / --primary-hover so coral in dark, indigo in light */}
+        {/* New Project */}
         <button
           onClick={() => handleNavigate("projects")}
           title="New Project"
           className={cn(
-            "w-full flex items-center gap-3 px-[18px] py-[11px] rounded-[14px] mb-3 text-sm font-semibold",
-            "text-white transition-all duration-200",
+            "w-full flex items-center gap-3 px-[18px] py-[11px] rounded-[14px] mb-3 text-sm font-semibold transition-all duration-200",
+            activeTextColor(theme),
           )}
           style={{ background: "var(--primary)" }}
           onMouseEnter={e => (e.currentTarget.style.background = "var(--primary-hover)")}
@@ -166,9 +165,10 @@ export default function Sidebar({ page, onNavigate }: SidebarProps) {
           title="Dashboard"
           icon={<LayoutDashboard size={16} className="flex-shrink-0" />}
           label={!sidebarCollapsed ? "Dashboard" : null}
+          activeClass={activeNav}
         />
 
-        {/* â”€â”€ Tools accordion â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+        {/* ── Tools accordion ─────────────────────────────────────────────── */}
         <div>
           <button
             onClick={() => {
@@ -207,9 +207,8 @@ export default function Sidebar({ page, onNavigate }: SidebarProps) {
                 transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
                 className="overflow-hidden"
               >
-                {/* Sub-tree border uses --border so it's #E5E7EB light / rgba white dark */}
                 <div className="mt-1 ml-3 pl-3 border-l border-[var(--border)] space-y-0.5 pb-1">
-                  {toolsItems.map(({ id, label, icon: Icon, badge, badgeColor }) => (
+                  {toolsItems.map(({ id, label, icon: Icon, badge }) => (
                     <button
                       key={id}
                       onClick={() => handleNavigate(id)}
@@ -223,8 +222,9 @@ export default function Sidebar({ page, onNavigate }: SidebarProps) {
                       <span className="flex-1 truncate text-left">{label}</span>
                       <span className={cn(
                         "text-[9px] font-semibold px-1.5 py-0.5 rounded hidden group-hover:inline-block",
-                        page === id ? "inline-block" : "",
-                        badgeColor
+                        page === id
+                          ? `inline-block ${activeTextColor(theme)} bg-black/10`
+                          : "text-white bg-white/20",
                       )}>
                         {badge}
                       </span>
@@ -251,8 +251,12 @@ export default function Sidebar({ page, onNavigate }: SidebarProps) {
             <Icon size={16} className="flex-shrink-0" />
             {!sidebarCollapsed && <span className="truncate">{label}</span>}
             {!sidebarCollapsed && id === "projects" && projects.length > 0 && (
-              /* Project count pill â€” subtle in both themes */
-              <span className="ml-auto text-[10px] font-bold bg-[var(--primary-light)] text-[var(--primary)] px-1.5 py-0.5 rounded-full">
+              <span className={cn(
+                "ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded-full",
+                page === "projects"
+                  ? `${activeTextColor(theme)} bg-black/10`
+                  : "text-white bg-white/20"
+              )}>
                 {projects.length}
               </span>
             )}
@@ -275,7 +279,7 @@ export default function Sidebar({ page, onNavigate }: SidebarProps) {
               className={cn(
                 "w-full flex items-center gap-3 px-[18px] py-[11px] rounded-[12px] text-sm font-medium transition-all duration-200",
                 page === "admin"
-                  ? "text-white shadow-[0_8px_24px_rgba(245,158,11,0.20)]"
+                  ? `${activeTextColor(theme)} shadow-[0_8px_24px_rgba(245,158,11,0.20)]`
                   : inactiveNav,
               )}
               style={page === "admin" ? { background: "linear-gradient(90deg,#F59E0B,#D97706)" } : undefined}
@@ -311,7 +315,7 @@ export default function Sidebar({ page, onNavigate }: SidebarProps) {
         )}
       </nav>
 
-      {/* â”€â”€ Bottom: settings + sign out + collapse â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ── Bottom: settings + sign out + collapse ────────────────────────── */}
       <div className="border-t border-[var(--border)] px-[10px] py-3 space-y-0.5 flex-shrink-0">
 
         {/* Settings */}
@@ -328,7 +332,7 @@ export default function Sidebar({ page, onNavigate }: SidebarProps) {
           {!sidebarCollapsed && <span className="text-xs">Settings</span>}
         </button>
 
-        {/* Sign Out â€” never active, just hover */}
+        {/* Sign Out */}
         <button
           onClick={() => { useStore.getState().logout(); }}
           title="Sign out"
@@ -363,4 +367,3 @@ export default function Sidebar({ page, onNavigate }: SidebarProps) {
     </motion.aside>
   );
 }
-

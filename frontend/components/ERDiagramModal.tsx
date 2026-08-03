@@ -14,6 +14,7 @@ import {
   ZoomIn, ZoomOut, Maximize2, AlertTriangle, Database,
   FileJson, Image as ImageIcon, X, LayoutGrid,
   GitFork, Table2, Share2, Layers, GitBranch,
+  type LucideIcon,
 } from "lucide-react";
 import { parseSQLSchema, validateSQL, type Table } from "@/lib/sqlParser";
 import { cn } from "@/lib/utils";
@@ -25,7 +26,7 @@ export type DiagramType = "er" | "flowchart" | "dfd0" | "dfd1" | "class";
 
 // ── Diagram config ────────────────────────────────────────────────────────────
 const DIAGRAM_CONFIG: Record<DiagramType, {
-  label: string; icon: React.ElementType;
+  label: string; icon: LucideIcon;
   color: string; darkColor: string; description: string;
 }> = {
   er:        { label: "ER Diagram",    icon: Table2,    color: "#2563EB", darkColor: "#8BAA82", description: "Entity-relationship diagram with tables & foreign keys" },

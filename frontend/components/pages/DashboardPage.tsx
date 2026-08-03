@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -258,18 +258,34 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (p: string) 
           </motion.div>
 
           <motion.div
-            animate={{ y: [0, 7, 0], rotate: [0, -2, 0] }}
-            transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 0.8 }}
-            className="absolute bottom-7 right-10 hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold border backdrop-blur-sm select-none"
-            style={{
-              background: theme === "light" ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.06)",
-              borderColor: theme === "light" ? "rgba(200,150,150,0.4)" : "rgba(255,255,255,0.1)",
-              color: theme === "light" ? "#b06060" : "rgba(255,255,255,0.5)",
-              boxShadow: "0 4px 12px rgba(0,0,0,0.10)",
-              transform: "translateZ(16px)",
-            }}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            whileHover={{ y: -2, boxShadow: "0 8px 24px -4px rgba(5,150,105,0.18), 0 2px 8px -2px rgba(16,24,40,0.08)" }}
+            className="card p-5 flex flex-col gap-4 cursor-pointer
+              hover:border-emerald-300 dark:hover:border-emerald-700 transition-colors"
+            onClick={() => onNavigate("generate")}
           >
-            ⚡ Instant SQL
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-100 dark:border-emerald-800/40 flex items-center justify-center flex-shrink-0">
+                <Wand2 size={18} className="text-emerald-600" />
+              </div>
+              <p className="font-bold text-[var(--text)] text-sm">Generate</p>
+            </div>
+            <span className="self-start text-[10px] font-semibold px-2 py-0.5 rounded-md
+              bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400
+              border border-emerald-100 dark:border-emerald-800/40">
+              text → sql
+            </span>
+            <p className="text-[11px] text-[var(--text-muted)] leading-relaxed flex-1">
+              Describe your database in plain English and get a full schema.
+            </p>
+            <button
+              className="text-xs w-full justify-center flex items-center gap-1.5 px-4 py-2 rounded-lg
+                font-semibold bg-emerald-600 hover:bg-emerald-700 text-white transition-colors"
+            >
+              Open generate <ArrowRight size={12} />
+            </button>
           </motion.div>
 
           <motion.div
@@ -502,19 +518,19 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (p: string) 
                 </button>
               )}
             </div>
-          )}
-        </div>
-
-        {/* Usage panel */}
-        <div>
-          <div className="flex items-center justify-between mb-3 px-1">
-            <motion.h2 {...fadeUp(0.14)}
-              className="text-xs font-bold uppercase tracking-widest text-[var(--text-subtle)]">
-              Plan Usage
-            </motion.h2>
-            <button onClick={() => onNavigate("usage")}
-              className="text-[11px] font-semibold text-[var(--primary)] hover:underline flex items-center gap-0.5">
-              Full details <ChevronRight size={11} />
+            <span className="self-start text-[10px] font-semibold px-2 py-0.5 rounded-md
+              bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400
+              border border-emerald-100 dark:border-emerald-800/40">
+              sql → sql
+            </span>
+            <p className="text-[11px] text-[var(--text-muted)] leading-relaxed flex-1">
+              Paste SQL written for one database and convert it to another dialect.
+            </p>
+            <button
+              className="text-xs w-full justify-center flex items-center gap-1.5 px-4 py-2 rounded-lg
+                font-semibold bg-emerald-600 hover:bg-emerald-700 text-white transition-colors"
+            >
+              Open migrate <ArrowRight size={12} />
             </button>
           </div>
           <motion.div {...fadeUp(0.2)} className="card p-5 space-y-4">
