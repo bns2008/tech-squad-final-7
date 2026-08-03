@@ -2,7 +2,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, FolderOpen, History, Settings, Shield,
-  ChevronLeft, ChevronRight, Database, LogOut, Plus, Sparkles, CreditCard, UserRound, X, Wand2, ArrowRightLeft, Wrench, ChevronDown, Terminal
+  ChevronLeft, ChevronRight, Database, LogOut, Plus, Sparkles, CreditCard, UserRound, X, Wand2, ArrowRightLeft, Wrench, ChevronDown, Terminal, BarChart3
 } from "lucide-react";
 import { useState } from "react";
 import { useStore } from "@/lib/store";
@@ -24,6 +24,7 @@ const mainNav = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { id: "projects",  label: "Projects",  icon: FolderOpen },
   { id: "history",   label: "History",   icon: History },
+  { id: "usage",     label: "Usage",     icon: BarChart3 },
   { id: "pricing",   label: "Pricing",   icon: CreditCard },
   { id: "profile",   label: "Profile",   icon: UserRound },
 ];
