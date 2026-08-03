@@ -14,9 +14,9 @@ interface SidebarProps {
 }
 
 const toolsItems = [
-  { id: "quick-convert", label: "Quick Convert", icon: Sparkles,      badge: "Image → SQL", badgeColor: "text-indigo-400 bg-indigo-500/10" },
-  { id: "generate",      label: "Generate",      icon: Wand2,          badge: "Text → SQL",  badgeColor: "text-violet-400 bg-violet-500/10" },
-  { id: "migrate",       label: "Migrator",      icon: ArrowRightLeft, badge: "SQL → SQL",   badgeColor: "text-violet-400 bg-violet-500/10" },
+  { id: "quick-convert", label: "Quick Convert", icon: Sparkles,      badge: "Image → SQL", badgeColor: "text-black bg-black/10" },
+  { id: "generate",      label: "Generate",      icon: Wand2,          badge: "Text → SQL",  badgeColor: "text-black bg-black/10" },
+  { id: "migrate",       label: "Migrator",      icon: ArrowRightLeft, badge: "SQL → SQL",   badgeColor: "text-black bg-black/10" },
 ];
 
 const mainNav = [
@@ -32,10 +32,12 @@ const mainNav = [
 const inactiveNav =
   "text-[var(--text-muted)] hover:bg-[var(--surface)] hover:text-[var(--text)]";
 
-// Active nav item — background applied via inline style using --primary so it
-// resolves to indigo in light and coral in dark automatically.
-const activeNav =
-  "text-white shadow-[0_8px_24px_rgba(0,0,0,0.20)]";
+// Active nav item — text color differs per theme:
+//   light → white text on indigo/blue background
+//   dark  → black text on pista/green background
+// We apply the text color conditionally via a helper below.
+const activeNavBase =
+  "shadow-[0_8px_24px_rgba(0,0,0,0.20)]";
 
 // Bottom-section hover (Settings / Sign Out / Collapse)
 const bottomHover =
@@ -44,15 +46,21 @@ const bottomHover =
 // Active nav inline style — uses CSS variable so theme drives the color
 const activeStyle: React.CSSProperties = { background: "var(--primary)" };
 
+// Returns the correct text color class for active items based on theme
+function activeTextColor(theme: string) {
+  return theme === "dark" ? "text-black" : "text-white";
+}
+
 // ── NavBtn ────────────────────────────────────────────────────────────────────
 function NavBtn({
-  active, onClick, title, icon, label,
+  active, onClick, title, icon, label, activeClass,
 }: {
   active: boolean;
   onClick: () => void;
   title: string;
   icon: React.ReactNode;
   label: React.ReactNode;
+  activeClass: string;
 }) {
   return (
     <button
@@ -60,7 +68,7 @@ function NavBtn({
       title={title}
       className={cn(
         "w-full flex items-center gap-3 px-[18px] py-[11px] rounded-[12px] text-sm font-medium transition-all duration-200",
-        active ? activeNav : inactiveNav,
+        active ? activeClass : inactiveNav,
       )}
       style={active ? activeStyle : undefined}
     >
@@ -72,7 +80,8 @@ function NavBtn({
 
 // ─────────────────────────────────────────────────────────────────────────────
 export default function Sidebar({ page, onNavigate }: SidebarProps) {
-  const { user, sidebarCollapsed, setSidebarCollapsed, logout, projects: allProjects } = useStore();
+  const { user, sidebarCollapsed, setSidebarCollapsed, logout, projects: allProjects, theme } = useStore();
+  const activeNav = `${activeNavBase} ${activeTextColor(theme)}`;
   const [mobileOpen, setMobileOpen] = useState(true);
   const [toolsOpen, setToolsOpen] = useState(
     ["quick-convert", "generate", "migrate"].includes(page)
@@ -147,7 +156,7 @@ export default function Sidebar({ page, onNavigate }: SidebarProps) {
           title="New Project"
           className={cn(
             "w-full flex items-center gap-3 px-[18px] py-[11px] rounded-[14px] mb-3 text-sm font-semibold",
-            "text-white transition-all duration-200",
+            activeTextColor(theme), "transition-all duration-200",
           )}
           style={{ background: "var(--primary)" }}
           onMouseEnter={e => (e.currentTarget.style.background = "var(--primary-hover)")}
@@ -164,6 +173,7 @@ export default function Sidebar({ page, onNavigate }: SidebarProps) {
           title="Dashboard"
           icon={<LayoutDashboard size={16} className="flex-shrink-0" />}
           label={!sidebarCollapsed ? "Dashboard" : null}
+          activeClass={activeNav}
         />
 
         {/* ── Tools accordion ─────────────────────────────────────────────── */}
@@ -207,7 +217,7 @@ export default function Sidebar({ page, onNavigate }: SidebarProps) {
               >
                 {/* Sub-tree border uses --border so it's #E5E7EB light / rgba white dark */}
                 <div className="mt-1 ml-3 pl-3 border-l border-[var(--border)] space-y-0.5 pb-1">
-                  {toolsItems.map(({ id, label, icon: Icon, badge, badgeColor }) => (
+                  {toolsItems.map(({ id, label, icon: Icon, badge }) => (
                     <button
                       key={id}
                       onClick={() => handleNavigate(id)}
@@ -221,8 +231,9 @@ export default function Sidebar({ page, onNavigate }: SidebarProps) {
                       <span className="flex-1 truncate text-left">{label}</span>
                       <span className={cn(
                         "text-[9px] font-semibold px-1.5 py-0.5 rounded hidden group-hover:inline-block",
-                        page === id ? "inline-block" : "",
-                        badgeColor
+                        page === id
+                          ? `inline-block ${activeTextColor(theme)} bg-black/10`
+                          : "text-white bg-white/20",
                       )}>
                         {badge}
                       </span>
@@ -249,8 +260,12 @@ export default function Sidebar({ page, onNavigate }: SidebarProps) {
             <Icon size={16} className="flex-shrink-0" />
             {!sidebarCollapsed && <span className="truncate">{label}</span>}
             {!sidebarCollapsed && id === "projects" && projects.length > 0 && (
-              /* Project count pill — subtle in both themes */
-              <span className="ml-auto text-[10px] font-bold bg-[var(--primary-light)] text-[var(--primary)] px-1.5 py-0.5 rounded-full">
+              <span className={cn(
+                "ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded-full",
+                page === "projects"
+                  ? `${activeTextColor(theme)} bg-black/10`
+                  : "text-white bg-white/20"
+              )}>
                 {projects.length}
               </span>
             )}
@@ -273,7 +288,7 @@ export default function Sidebar({ page, onNavigate }: SidebarProps) {
               className={cn(
                 "w-full flex items-center gap-3 px-[18px] py-[11px] rounded-[12px] text-sm font-medium transition-all duration-200",
                 page === "admin"
-                  ? "text-white shadow-[0_8px_24px_rgba(245,158,11,0.20)]"
+                  ? `${activeTextColor(theme)} shadow-[0_8px_24px_rgba(245,158,11,0.20)]`
                   : inactiveNav,
               )}
               style={page === "admin" ? { background: "linear-gradient(90deg,#F59E0B,#D97706)" } : undefined}

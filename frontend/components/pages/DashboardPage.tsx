@@ -81,7 +81,7 @@ function StatCard({ label, value, Icon, color, bg, tooltip, delay }: StatCardPro
 // DashboardPage
 // ---------------------------------------------------------------------------
 export default function DashboardPage({ onNavigate }: { onNavigate: (p: string) => void }) {
-  const { user, projects: allProjects, getSubscription, quickHistory } = useStore();
+  const { user, projects: allProjects, getSubscription, quickHistory, theme } = useStore();
 
   const sub         = getSubscription();
   const plan        = getPlan(sub);
@@ -293,8 +293,12 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (p: string) 
               Describe your database in plain English and get a full schema.
             </p>
             <button
-              className="text-xs w-full justify-center flex items-center gap-1.5 px-4 py-2 rounded-lg
-                font-semibold bg-emerald-600 hover:bg-emerald-700 text-white transition-colors"
+              className={cn(
+                "text-xs w-full justify-center flex items-center gap-1.5 px-4 py-2 rounded-lg font-semibold text-white transition-colors",
+                theme === "dark"
+                  ? "bg-emerald-600 hover:bg-emerald-700"
+                  : "bg-blue-600 hover:bg-blue-700"
+              )}
             >
               Open generate <ArrowRight size={12} />
             </button>
@@ -325,8 +329,12 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (p: string) 
               Paste SQL written for one database and convert it to another dialect.
             </p>
             <button
-              className="text-xs w-full justify-center flex items-center gap-1.5 px-4 py-2 rounded-lg
-                font-semibold bg-emerald-600 hover:bg-emerald-700 text-white transition-colors"
+              className={cn(
+                "text-xs w-full justify-center flex items-center gap-1.5 px-4 py-2 rounded-lg font-semibold text-white transition-colors",
+                theme === "dark"
+                  ? "bg-emerald-600 hover:bg-emerald-700"
+                  : "bg-blue-600 hover:bg-blue-700"
+              )}
             >
               Open migrate <ArrowRight size={12} />
             </button>
