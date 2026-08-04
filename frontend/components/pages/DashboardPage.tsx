@@ -293,14 +293,7 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (p: string) 
             <p className="text-[11px] text-[var(--text-muted)] leading-relaxed flex-1">
               Describe your database in plain English and get a full schema.
             </p>
-            <button
-              className={cn(
-                "text-xs w-full justify-center flex items-center gap-1.5 px-4 py-2 rounded-lg font-semibold text-white transition-colors",
-                theme === "dark"
-                  ? "bg-emerald-600 hover:bg-emerald-700"
-                  : "bg-blue-600 hover:bg-blue-700"
-              )}
-            >
+            <button className="btn-primary text-xs w-full justify-center py-2">
               Open generate <ArrowRight size={12} />
             </button>
           </motion.div>
@@ -329,14 +322,7 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (p: string) 
             <p className="text-[11px] text-[var(--text-muted)] leading-relaxed flex-1">
               Paste SQL written for one database and convert it to another dialect.
             </p>
-            <button
-              className={cn(
-                "text-xs w-full justify-center flex items-center gap-1.5 px-4 py-2 rounded-lg font-semibold text-white transition-colors",
-                theme === "dark"
-                  ? "bg-emerald-600 hover:bg-emerald-700"
-                  : "bg-blue-600 hover:bg-blue-700"
-              )}
-            >
+            <button className="btn-primary text-xs w-full justify-center py-2">
               Open migrate <ArrowRight size={12} />
             </button>
           </motion.div>
