@@ -206,23 +206,51 @@ export async function updateProfile(
   return users[idx];
 }
 
-// ── Change password (localStorage — unchanged) ────────────────────────────────
+// ── Change password ────────────────────────────────────────────────────────────
 export async function changePassword(
   userId: string,
   currentPw: string,
   newPw: string
 ): Promise<void> {
+  if (newPw.length < 8) throw new Error("New password must be at least 8 characters.");
+
+  // Real DB user — verify + update via backend
+  const numericId = parseInt(userId, 10);
+  if (!isNaN(numericId) && userId !== SA_ID) {
+    const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    const res = await fetch(`${API}/user/${numericId}/password`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ current_password: currentPw, new_password: newPw }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.detail || "Failed to change password.");
+    }
+    return;
+  }
+
+  // Fallback: localStorage-only users (Super Admin / demo)
   await delay(400);
   const stored = localStorage.getItem(`er_ai_pw_${userId}`);
   if (stored !== currentPw) throw new Error("Current password is incorrect.");
-  if (newPw.length < 8) throw new Error("New password must be at least 8 characters.");
   localStorage.setItem(`er_ai_pw_${userId}`, newPw);
 }
 
-// ── Delete account (localStorage — unchanged) ─────────────────────────────────
+// ── Delete account (hard delete from DB for real users, localStorage for SA) ──
 export async function deleteAccount(userId: string): Promise<void> {
   await delay(500);
   if (userId === SA_ID) throw new Error("Super Admin account cannot be deleted.");
+
+  // For real DB users (numeric ID) — permanently delete row from PostgreSQL
+  const numericId = parseInt(userId, 10);
+  if (!isNaN(numericId)) {
+    const { apiDeleteAccount } = await import("./api");
+    await apiDeleteAccount(numericId);
+    return;
+  }
+
+  // Fallback for localStorage-only users
   saveUsers(getUsers().filter((u) => u.id !== userId));
   localStorage.removeItem(`er_ai_pw_${userId}`);
 }

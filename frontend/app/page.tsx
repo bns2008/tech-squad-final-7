@@ -25,6 +25,7 @@ import GeneratePage from "@/components/pages/GeneratePage";
 import MigratePage from "@/components/pages/MigratePage";
 import PlaygroundPage from "@/app/playground/page";
 import ProfilePage from "@/components/pages/ProfilePage";
+import UsagePage from "@/components/pages/UsagePage";
 
 import { useStore } from "@/lib/store";
 import dynamic from "next/dynamic";
@@ -33,7 +34,7 @@ import { LayoutDashboard, FolderOpen, History, Settings, Shield } from "lucide-r
 const DatabaseScene = dynamic(() => import("@/components/ambient/DatabaseScene"), { ssr: false });
 
 type AuthPage = "login" | "register" | "forgot";
-type AppPage  = "dashboard" | "projects" | "project-detail" | "history" | "quick-convert" | "generate" | "migrate" | "playground" | "pricing" | "profile" | "settings" | "admin";
+type AppPage  = "dashboard" | "projects" | "project-detail" | "history" | "quick-convert" | "generate" | "migrate" | "playground" | "pricing" | "profile" | "usage" | "settings" | "admin";
 
 export default function RootPage() {
   const { isAuthenticated, user, sidebarCollapsed } = useStore();
@@ -99,7 +100,7 @@ export default function RootPage() {
       case "playground":     return <PlaygroundPage />;
       case "pricing":        return <PricingPage />;
       case "profile":        return <ProfilePage onNavigate={navigate} />;
-      case "settings":       return <SettingsPage />;
+      case "settings":       return <SettingsPage onNavigate={navigate} />;
       case "admin":
         if (user?.role !== "admin") return <div className="text-red-500 p-8">Access denied</div>;
         return <AdminPage />;
@@ -115,8 +116,8 @@ export default function RootPage() {
       <div className="app-main flex-1 flex flex-col min-h-screen" style={{ marginLeft: ml, transition: "margin-left 0.25s cubic-bezier(0.16,1,0.3,1)" }}>
         <Navbar onNavigate={navigate} />
 
-        <main className="flex-1 pt-[57px]">
-          <DatabaseScene />
+        <main className="flex-1 pt-[57px] relative overflow-hidden">
+          {appPage === "dashboard" && <DatabaseScene />}
           {appPage === "playground" ? (
             <AnimatePresence mode="wait">
               <motion.div

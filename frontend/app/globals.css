@@ -162,12 +162,13 @@ body {
 
 .dark .btn-primary {
   background: var(--primary);
+  color: black;
   box-shadow: 0 4px 16px rgba(139,170,130,0.22);
 }
 
 .dark .btn-primary:hover {
   background: var(--primary-hover);
-  box-shadow: 0 6px 20px rgba(139,170,130,0.30);
+  color: black;
 }
 
 /* Btn primary */
@@ -185,8 +186,8 @@ body {
   align-items: center;
   gap: 8px;
 }
-.btn-primary:hover { background: #9ABA90; box-shadow: 0 8px 24px rgba(37,99,235,0.20); transform: translateY(-1px); }
-.btn-primary:active { background: #8BAA82; transform: translateY(0); box-shadow: none; }
+.btn-primary:hover { background: var(--primary-hover); transform: translateY(-1px); }
+.btn-primary:active { background: var(--primary); transform: translateY(0); }
 
 /* Btn ghost */
 .btn-ghost {

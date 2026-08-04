@@ -131,6 +131,7 @@ export default function ProfilePage({ onNavigate }: { onNavigate: (p: string) =>
                 onClick={saveProfile}
                 disabled={saving}
                 className="btn-primary text-base disabled:opacity-60 px-10 py-3"
+                style={{ boxShadow: "none" }}
               >
                 {saving ? (
                   <span className="flex items-center gap-2">
@@ -254,16 +255,6 @@ export default function ProfilePage({ onNavigate }: { onNavigate: (p: string) =>
                 className="w-full btn-ghost text-sm py-2.5 justify-center"
               >
                 Change Password
-              </button>
-              <button
-                onClick={() => onNavigate("pricing")}
-                className="w-full flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-all duration-200"
-                style={{ background: "var(--primary)" }}
-                onMouseEnter={e => (e.currentTarget.style.background = "var(--primary-hover)")}
-                onMouseLeave={e => (e.currentTarget.style.background = "var(--primary)")}
-              >
-                {sub.planId === "pro" ? "Manage Subscription" : "Upgrade to Pro"}
-                <ArrowRight size={14} />
               </button>
             </div>
           </motion.div>

@@ -101,7 +101,7 @@ export default function LoginPage({ onNavigate }: { onNavigate: (page: string) =
       {/* Heading */}
       <div className="mb-8">
         <h1 className="text-4xl font-bold text-[var(--text)] mb-2">Welcome back</h1>
-        <p className="text-base text-[var(--text-muted)]">Sign in to your ER AI Studio account</p>
+        <p className="text-base text-[var(--text-muted)]">Sign in to your Schemalens account</p>
       </div>
 
       {/* Error */}

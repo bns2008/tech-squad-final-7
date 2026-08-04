@@ -104,6 +104,14 @@ export async function apiDeleteProject(userId: number, projectUid: string) {
   return request<{ message: string }>(`/projects/${userId}/${projectUid}`, { method: "DELETE" });
 }
 
+export async function apiDeactivateAccount(userId: number) {
+  return request<{ message: string }>(`/user/${userId}/deactivate`, { method: "DELETE" });
+}
+
+export async function apiDeleteAccount(userId: number) {
+  return request<{ message: string }>(`/user/${userId}`, { method: "DELETE" });
+}
+
 // ─── Quick History ────────────────────────────────────────────────────────────
 
 export interface BackendQuickEntry {

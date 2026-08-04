@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Play,
@@ -54,7 +55,7 @@ const MonacoEditor = dynamic(
 );
 
 // ── Default SQL ───────────────────────────────────────────────────────────────
-const DEFAULT_SQL = `-- SQL Playground — ER AI Studio
+const DEFAULT_SQL = `-- SQL Playground — Schemalens
 -- Press Ctrl+Enter to run  |  Ctrl+S to download schema.sql
 
 CREATE TABLE users (
@@ -192,7 +193,9 @@ export default function PlaygroundPage() {
   const [erDiagramOpen, setErDiagramOpen] = useState(false);
   const [diagramInitialTab, setDiagramInitialTab] = useState<DiagramType>("er");
   const [diagramDropdownOpen, setDiagramDropdownOpen] = useState(false);
+  const [diagramDropdownPos, setDiagramDropdownPos] = useState<{ top: number; right: number } | null>(null);
   const diagramDropdownRef = useRef<HTMLDivElement>(null);
+  const diagramBtnRef = useRef<HTMLButtonElement>(null);
   const editorRef = useRef<unknown>(null);
   const monacoRef = useRef<unknown>(null);
 
@@ -331,9 +334,13 @@ export default function PlaygroundPage() {
   // ── Close diagram dropdown on outside click ──────────────────────────────
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (diagramDropdownRef.current && !diagramDropdownRef.current.contains(e.target as Node)) {
-        setDiagramDropdownOpen(false);
-      }
+      if (
+        diagramBtnRef.current && diagramBtnRef.current.contains(e.target as Node)
+      ) return;
+      if (
+        diagramDropdownRef.current && diagramDropdownRef.current.contains(e.target as Node)
+      ) return;
+      setDiagramDropdownOpen(false);
     };
     if (diagramDropdownOpen) document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
@@ -449,30 +456,34 @@ export default function PlaygroundPage() {
         initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.25 }}
-        className="flex items-center justify-between gap-4 px-3 sm:px-5 py-3 flex-shrink-0
-          border-b border-[var(--border)] bg-[var(--card)] flex-wrap"
+        className="flex items-center gap-3 px-3 sm:px-5 py-3 flex-shrink-0
+          border-b border-[var(--border)] bg-[var(--card)] overflow-x-auto"
+        style={{ scrollbarWidth: "none" }}
       >
-        {/* Title */}
-        <div className="flex items-center gap-2.5">
+        {/* Title — never shrinks */}
+        <div className="flex items-center gap-2.5 flex-shrink-0">
           <div
             className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
             style={{ background: "var(--primary-light)", color: "var(--primary)" }}
           >
             <Terminal size={16} />
           </div>
-          <div>
-            <h1 className="text-[15px] font-bold text-[var(--text)] leading-tight">
+          <div className="flex-shrink-0">
+            <h1 className="text-[15px] font-bold text-[var(--text)] leading-tight whitespace-nowrap">
               SQL Playground
             </h1>
-            <p className="text-[11px] text-[var(--text-subtle)] leading-tight hidden sm:block">
+            <p className="text-[11px] text-[var(--text-subtle)] leading-tight whitespace-nowrap hidden lg:block">
               Write and test SQL · <kbd className="font-mono">Ctrl+Enter</kbd> run ·{" "}
               <kbd className="font-mono">Ctrl+S</kbd> download
             </p>
           </div>
         </div>
 
-        {/* Action buttons */}
-        <div className="flex items-center gap-2 flex-wrap">
+        {/* Spacer */}
+        <div className="flex-1" style={{ minWidth: 16 }} />
+
+        {/* Action buttons — all in one row, never wrap, never hide */}
+        <div className="flex items-center gap-2 flex-shrink-0">
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.96 }}
@@ -481,7 +492,7 @@ export default function PlaygroundPage() {
             title="Run SQL (Ctrl+Enter)"
           >
             <Play size={13} />
-            <span className="hidden sm:inline">Run SQL</span>
+            <span>Run SQL</span>
           </motion.button>
 
           <motion.button
@@ -492,75 +503,89 @@ export default function PlaygroundPage() {
             title="Format SQL"
           >
             <Wand2 size={13} />
-            <span className="hidden sm:inline">Format SQL</span>
+            <span>Format SQL</span>
           </motion.button>
 
           {/* Diagram Dropdown Button */}
-          <div className="relative" ref={diagramDropdownRef}>
+          <div className="relative">
             <motion.button
+              ref={diagramBtnRef}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.96 }}
-              onClick={() => setDiagramDropdownOpen((v) => !v)}
+              onClick={() => {
+                if (diagramBtnRef.current) {
+                  const rect = diagramBtnRef.current.getBoundingClientRect();
+                  setDiagramDropdownPos({
+                    top: rect.bottom + 6,
+                    right: window.innerWidth - rect.right,
+                  });
+                }
+                setDiagramDropdownOpen((v) => !v);
+              }}
               className={cn("btn-ghost btn-sm gap-1.5", diagramDropdownOpen && "bg-[var(--surface)]")}
               title="Generate Diagram"
             >
               <GitFork size={13} />
-              <span className="hidden sm:inline">Diagram</span>
+              <span>Diagram</span>
               <ChevronDown
                 size={11}
                 className={cn("transition-transform duration-200", diagramDropdownOpen && "rotate-180")}
               />
             </motion.button>
-
-            <AnimatePresence>
-              {diagramDropdownOpen && (
-                <motion.div
-                  initial={{ opacity: 0, y: -6, scale: 0.97 }}
-                  animate={{ opacity: 1, y: 0,  scale: 1    }}
-                  exit={{    opacity: 0, y: -6, scale: 0.97 }}
-                  transition={{ duration: 0.15, ease: "easeOut" }}
-                  className="absolute top-full mt-1.5 right-0 z-50 rounded-xl border shadow-xl overflow-hidden"
-                  style={{
-                    background: "var(--card)",
-                    borderColor: "var(--border)",
-                    minWidth: 200,
-                  }}
-                >
-                  {([
-                    { type: "er"        as DiagramType, label: "ER Diagram",    icon: Table2,    color: "#2563EB", desc: "Tables & foreign keys"         },
-                    { type: "flowchart" as DiagramType, label: "Flowchart",      icon: GitFork,   color: "#059669", desc: "Schema creation flow"          },
-                    { type: "dfd0"      as DiagramType, label: "DFD Level 0",    icon: Share2,    color: "#D97706", desc: "System context diagram"         },
-                    { type: "dfd1"      as DiagramType, label: "DFD Level 1",    icon: Layers,    color: "#7C3AED", desc: "Processes & data stores"        },
-                    { type: "class"     as DiagramType, label: "Class Diagram",  icon: GitBranch, color: "#0284C7", desc: "OOP classes & methods"          },
-                  ]).map(({ type, label, icon: Icon, color, desc }, i) => (
-                    <motion.button
-                      key={type}
-                      initial={{ opacity: 0, x: -6 }}
-                      animate={{ opacity: 1,  x: 0  }}
-                      transition={{ delay: i * 0.04 }}
-                      onClick={() => {
-                        setDiagramInitialTab(type);
-                        setErDiagramOpen(true);
-                        setDiagramDropdownOpen(false);
-                      }}
-                      className="w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-[var(--surface)]"
-                    >
-                      <div
-                        className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
-                        style={{ background: color + "20", color }}
-                      >
-                        <Icon size={13} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[12px] font-semibold text-[var(--text)] leading-tight">{label}</p>
-                        <p className="text-[10px] text-[var(--text-subtle)] leading-tight">{desc}</p>
-                      </div>
-                    </motion.button>
-                  ))}
-                </motion.div>
-              )}
-            </AnimatePresence>
           </div>
+
+          {/* Diagram Dropdown Portal — rendered at body level to escape overflow clipping */}
+          {diagramDropdownOpen && diagramDropdownPos && typeof window !== "undefined" && createPortal(
+            <motion.div
+              ref={diagramDropdownRef}
+              initial={{ opacity: 0, y: -6, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: 0.15, ease: "easeOut" }}
+              style={{
+                position: "fixed",
+                top: diagramDropdownPos.top,
+                right: diagramDropdownPos.right,
+                zIndex: 9999,
+                background: "var(--card)",
+                border: "1px solid var(--border)",
+                minWidth: 210,
+              }}
+              className="rounded-xl shadow-2xl overflow-hidden"
+            >
+              {([
+                { type: "er"        as DiagramType, label: "ER Diagram",    icon: Table2,    color: "#2563EB", desc: "Tables & foreign keys"        },
+                { type: "flowchart" as DiagramType, label: "Flowchart",     icon: GitFork,   color: "#059669", desc: "Schema creation flow"         },
+                { type: "dfd0"      as DiagramType, label: "DFD Level 0",   icon: Share2,    color: "#D97706", desc: "System context diagram"        },
+                { type: "dfd1"      as DiagramType, label: "DFD Level 1",   icon: Layers,    color: "#7C3AED", desc: "Processes & data stores"       },
+                { type: "class"     as DiagramType, label: "Class Diagram", icon: GitBranch, color: "#0284C7", desc: "OOP classes & methods"         },
+              ]).map(({ type, label, icon: Icon, color, desc }, i) => (
+                <motion.button
+                  key={type}
+                  initial={{ opacity: 0, x: -6 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: i * 0.04 }}
+                  onClick={() => {
+                    setDiagramInitialTab(type);
+                    setErDiagramOpen(true);
+                    setDiagramDropdownOpen(false);
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-[var(--surface)]"
+                >
+                  <div
+                    className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                    style={{ background: color + "20", color }}
+                  >
+                    <Icon size={13} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[12px] font-semibold text-[var(--text)] leading-tight">{label}</p>
+                    <p className="text-[10px] text-[var(--text-subtle)] leading-tight">{desc}</p>
+                  </div>
+                </motion.button>
+              ))}
+            </motion.div>,
+            document.body
+          )}
 
           <motion.button
             whileHover={{ scale: 1.02 }}
@@ -580,7 +605,7 @@ export default function PlaygroundPage() {
                   className="flex items-center gap-1.5 text-[var(--success)]"
                 >
                   <CheckCircle2 size={13} />
-                  <span className="hidden sm:inline">Copied!</span>
+                  <span>Copied!</span>
                 </motion.span>
               ) : (
                 <motion.span
@@ -592,7 +617,7 @@ export default function PlaygroundPage() {
                   className="flex items-center gap-1.5"
                 >
                   <Copy size={13} />
-                  <span className="hidden sm:inline">Copy</span>
+                  <span>Copy</span>
                 </motion.span>
               )}
             </AnimatePresence>
@@ -606,20 +631,20 @@ export default function PlaygroundPage() {
             title="Download schema.sql (Ctrl+S)"
           >
             <Download size={13} />
-            <span className="hidden sm:inline">Download</span>
+            <span>Download</span>
           </motion.button>
 
-          <div className="w-px h-6 bg-[var(--border)] mx-1 hidden sm:block" />
+          <div className="w-px h-6 bg-[var(--border)] mx-1 flex-shrink-0" />
 
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.96 }}
-            onClick={() => setHistoryOpen(!historyOpen)}
+            onClick={() => { setHistoryOpen(!historyOpen); setTablesOpen(false); }}
             className={cn("btn-ghost btn-sm gap-1.5", historyOpen && "bg-[var(--surface)")}
             title="Toggle history panel"
           >
             <History size={13} />
-            <span className="hidden sm:inline">History</span>
+            <span>History</span>
             {history.length > 0 && (
               <span className="ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-[var(--primary)] text-white">
                 {history.length}
@@ -630,12 +655,12 @@ export default function PlaygroundPage() {
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.96 }}
-            onClick={() => setTablesOpen(!tablesOpen)}
+            onClick={() => { setTablesOpen(!tablesOpen); setHistoryOpen(false); }}
             className={cn("btn-ghost btn-sm gap-1.5", tablesOpen && "bg-[var(--surface)")}
             title="Toggle table explorer"
           >
             <Table size={13} />
-            <span className="hidden sm:inline">Tables</span>
+            <span>Tables</span>
             {currentTables.length > 0 && (
               <span className="ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-[var(--primary)] text-white">
                 {currentTables.length}
@@ -646,9 +671,9 @@ export default function PlaygroundPage() {
       </motion.div>
 
       {/* ── Editor + Sidebars + Output ─────────────────────────────────────────────────── */}
-      <div className="flex flex-1 overflow-hidden" style={{ minHeight: 0 }}>
+      <div className="flex flex-1 overflow-hidden relative" style={{ minHeight: 0, minWidth: 0 }}>
         
-        {/* ── Monaco Editor area ───────────────────────────────────────────── */}
+        {/* ── Monaco Editor area — always full width ───────────────────────── */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -745,7 +770,7 @@ export default function PlaygroundPage() {
           />
         </motion.div>
 
-      {/* ── History Panel ─────────────────────────────────────────────────── */}
+      {/* ── History Panel — overlay, slides in from right ─────────────────── */}
       <AnimatePresence>
         {historyOpen && (
           <motion.div
@@ -754,8 +779,8 @@ export default function PlaygroundPage() {
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: "100%", opacity: 0 }}
             transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-            className="border-l border-[var(--border)] flex flex-col flex-shrink-0 overflow-hidden"
-            style={{ width: 300, background: "var(--card)" }}
+            className="absolute top-0 right-0 bottom-0 flex flex-col overflow-hidden z-20 shadow-2xl"
+            style={{ width: 300, background: "var(--card)", borderLeft: "1px solid var(--border)" }}
           >
             <div className="flex items-center justify-between px-3 sm:px-4 py-3 border-b border-[var(--border)]">
               <div className="flex items-center gap-2">
@@ -832,7 +857,7 @@ export default function PlaygroundPage() {
         )}
       </AnimatePresence>
 
-      {/* ── Table Explorer Panel ─────────────────────────────────────────────── */}
+      {/* ── Table Explorer Panel — overlay, slides in from right ────────────── */}
       <AnimatePresence>
         {tablesOpen && (
           <motion.div
@@ -841,8 +866,8 @@ export default function PlaygroundPage() {
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: "100%", opacity: 0 }}
             transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-            className="border-l border-[var(--border)] flex flex-col flex-shrink-0 overflow-hidden"
-            style={{ width: 260, background: "var(--card)" }}
+            className="absolute top-0 right-0 bottom-0 flex flex-col overflow-hidden z-20 shadow-2xl"
+            style={{ width: 280, background: "var(--card)", borderLeft: "1px solid var(--border)" }}
           >
             <div className="flex items-center justify-between px-3 sm:px-4 py-3 border-b border-[var(--border)]">
               <div className="flex items-center gap-2">

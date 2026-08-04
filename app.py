@@ -17,7 +17,7 @@ from models import User, Image, Conversion, ApiUsage, ExportLog, UserActivity
 from utils.activity_logger import log_activity
 from utils.file_storage import save_uploaded_image
 
-app = FastAPI(title="ER AI Studio API")
+app = FastAPI(title="Schemalens API")
 
 app.add_middleware(
     CORSMiddleware,
@@ -38,7 +38,7 @@ def get_ip(request: Request) -> str:
 # ── Health ────────────────────────────────────────────────────────────────────
 @app.get("/")
 def home():
-    return {"message": "ER AI Studio backend is running"}
+    return {"message": "Schemalens backend is running"}
 
 
 # ── Register ──────────────────────────────────────────────────────────────────
@@ -113,7 +113,34 @@ def get_user(user_id: int, db: Session = Depends(get_db)):
     return _user_dict(user)
 
 
-# ── Update profile (name + avatar) ───────────────────────────────────────────
+# ── Change password ───────────────────────────────────────────────────────────
+@app.put("/user/{user_id}/password")
+def change_password(user_id: int, payload: dict, request: Request, db: Session = Depends(get_db)):
+    current_pw = payload.get("current_password", "")
+    new_pw     = payload.get("new_password", "")
+
+    if not current_pw or not new_pw:
+        raise HTTPException(status_code=400, detail="current_password and new_password are required")
+    if len(new_pw) < 8:
+        raise HTTPException(status_code=400, detail="New password must be at least 8 characters")
+
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if not bcrypt.checkpw(current_pw.encode(), user.password_hash.encode()):
+        raise HTTPException(status_code=401, detail="Current password is incorrect")
+
+    user.password_hash = bcrypt.hashpw(new_pw.encode(), bcrypt.gensalt()).decode()
+    db.commit()
+
+    log_activity(db, "password_change", user_id=user_id,
+                 description="Password changed successfully", ip_address=get_ip(request))
+
+    return {"message": "Password updated successfully"}
+
+
+
 @app.put("/user/{user_id}/profile")
 def update_profile(user_id: int, payload: dict, request: Request, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.id == user_id).first()
@@ -411,6 +438,31 @@ def get_payments(user_id: int, db: Session = Depends(get_db)):
         }
         for p in rows
     ]
+
+
+# ── Hard delete account (removes user row from DB entirely) ──────────────────
+@app.delete("/user/{user_id}")
+def delete_account(user_id: int, request: Request, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    db.delete(user)
+    db.commit()
+    return {"message": "Account deleted"}
+
+
+# ── Deactivate account (soft delete — sets is_active = False) ────────────────
+@app.delete("/user/{user_id}/deactivate")
+def deactivate_account(user_id: int, request: Request, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    user.is_active = False
+    db.commit()
+    log_activity(db, "account_deactivated", user_id=user_id,
+                 description="User deactivated their account",
+                 ip_address=get_ip(request))
+    return {"message": "Account deactivated"}
 
 
 # ── Update user plan ──────────────────────────────────────────────────────────

@@ -128,9 +128,9 @@ function ThreeBackground() {
 }
 
 const FEATURES = [
-  { icon: Zap,    title: "Instant Conversion",  desc: "ER diagram to SQL in seconds" },
-  { icon: Shield, title: "5 SQL Dialects",       desc: "PostgreSQL, MySQL, SQLite & more" },
-  { icon: Clock,  title: "Version History",      desc: "Track every schema change" },
+  { icon: Zap,    title: "Image → SQL in Seconds",   desc: "Upload any ER diagram and get production-ready DDL instantly" },
+  { icon: Shield, title: "4 Powerful Tools",          desc: "Quick Convert, Schema Generator, SQL Migrator & Playground" },
+  { icon: Clock,  title: "Multi-dialect Support",     desc: "PostgreSQL, MySQL, SQLite, MSSQL & Oracle" },
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -153,8 +153,8 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
               <Database size={24} className="text-white" />
             </div>
             <div>
-              <p className="text-white font-bold text-xl leading-none">ER AI Studio</p>
-              <p className="text-white/50 text-sm mt-0.5">Database Code Generator</p>
+              <p className="text-white font-bold text-xl leading-none">Schemalens</p>
+              <p className="text-white/50 text-sm mt-0.5">AI-Powered Schema Toolkit</p>
             </div>
           </div>
 
@@ -168,10 +168,21 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
             className="mb-10"
           >
             <h2 className="text-white text-3xl xl:text-4xl font-bold leading-tight mb-4">
-              Turn any ER diagram into production-ready SQL instantly.
+              Sketch it. Upload it.{" "}
+              <span style={{
+                background: "linear-gradient(90deg, #A78BFA, #60A5FA)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+              }}>
+                Ship it.
+              </span>
+              <br />
+              <span className="text-white/90 font-extrabold">
+                Your database schema, instantly.
+              </span>
             </h2>
             <p className="text-white/60 text-base leading-relaxed">
-              Upload a photo of your whiteboard, a scanned diagram, or any ER image — and get clean, executable database code in seconds.
+              Upload a diagram, describe your schema in plain English, migrate between dialects, or write SQL live — Schemalens handles it all.
             </p>
           </motion.div>
 
@@ -202,7 +213,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
             transition={{ delay: 0.6, duration: 0.6 }}
             className="grid grid-cols-3 gap-3"
           >
-            {[["10K+","Diagrams"],["12+","Formats"],["99%","Accuracy"]].map(([v, l]) => (
+            {[["4+","AI Tools"],["5","SQL Dialects"],["ER+Text","Input Modes"]].map(([v, l]) => (
               <div key={l} className="text-center p-4 rounded-2xl bg-white/8 border border-white/10 backdrop-blur-sm">
                 <div className="text-white font-bold text-2xl xl:text-3xl">{v}</div>
                 <div className="text-white/50 text-xs mt-1">{l}</div>
@@ -226,8 +237,8 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
               <Database size={20} className="text-white" />
             </div>
             <div>
-              <span className="font-bold text-lg text-[var(--text)]">ER AI Studio</span>
-              <p className="text-xs text-[var(--text-muted)]">Database Code Generator</p>
+              <span className="font-bold text-lg text-[var(--text)]">Schemalens</span>
+              <p className="text-xs text-[var(--text-muted)]">AI-Powered Schema Toolkit</p>
             </div>
           </div>
 

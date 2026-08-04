@@ -120,10 +120,10 @@ export default function Sidebar({ page, onNavigate }: SidebarProps) {
               className="min-w-0"
             >
               <p className="font-bold text-[14px] text-[var(--text)] whitespace-nowrap leading-tight">
-                ER AI Studio
+                Schemalens
               </p>
               <p className="text-[10px] text-[var(--text-subtle)] whitespace-nowrap leading-tight mt-0.5">
-                Schema Intelligence
+                AI Schema Toolkit
               </p>
             </motion.div>
           )}

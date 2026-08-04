@@ -1,5 +1,5 @@
 -- =============================================================================
--- ER AI Studio — Full PostgreSQL Schema
+-- Schemalens — Full PostgreSQL Schema
 -- Generated from SQLAlchemy models (models.py)
 --
 -- HOW TO USE ON ANOTHER COMPUTER:

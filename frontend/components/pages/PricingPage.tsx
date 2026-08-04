@@ -92,7 +92,7 @@ export default function PricingPage() {
           key:          keyId,
           amount,                          // in paise
           currency,
-          name:         "ER AI Studio",
+          name:         "Schemalens",
           description:  "Pro Plan — Monthly",
           order_id:     orderId,
           prefill: {

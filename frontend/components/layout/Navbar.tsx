@@ -1,20 +1,36 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Sun, Moon, Bell, Search, CheckCircle2, User, Settings, LogOut, ArrowRight } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { initials, cn } from "@/lib/utils";
 import { getPlan } from "@/lib/subscription";
+import GlobalSearch from "@/components/GlobalSearch";
 
 interface NavbarProps { onNavigate: (p: string) => void; }
 
 export default function Navbar({ onNavigate }: NavbarProps) {
-  const { theme, setTheme, user, sidebarCollapsed, getSubscription } = useStore();
+  const { theme, setTheme, user, sidebarCollapsed, getSubscription, projects: allProjects } = useStore();
   const sub  = getSubscription();
   const plan = getPlan(sub);
   const ml   = sidebarCollapsed ? 64 : 220;
 
-  const [popupOpen, setPopupOpen] = useState(false);
+  const [popupOpen,  setPopupOpen]  = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+
+  const myProjects = allProjects.filter(p => p.ownerId === (user?.id ?? ""));
+
+  // Global Ctrl+K shortcut
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "k") {
+        e.preventDefault();
+        setSearchOpen(true);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
 
   return (
     <>
@@ -23,17 +39,22 @@ export default function Navbar({ onNavigate }: NavbarProps) {
         className="app-navbar fixed top-0 right-0 z-20 h-[57px] flex items-center justify-between
           px-6 bg-[var(--card)] border-b border-[var(--border)] transition-[left] duration-[250ms]"
       >
-        {/* Search */}
-        <div className="relative hidden sm:block">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-subtle)]" />
-          <input
-            type="text" placeholder="Search projects..."
-            className="pl-9 pr-4 py-2 text-sm rounded-xl border border-[var(--border)]
-              bg-[var(--surface)] text-[var(--text)] placeholder:text-[var(--text-subtle)]
-              focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500
-              w-52 transition-all"
-          />
-        </div>
+        {/* Search trigger */}
+        <button
+          onClick={() => setSearchOpen(true)}
+          className="relative hidden sm:flex items-center gap-2 pl-3 pr-3 py-2 text-sm rounded-xl
+            border border-[var(--border)] bg-[var(--surface)] text-[var(--text-subtle)]
+            hover:border-[var(--primary)]/50 hover:text-[var(--text)] transition-all w-96 text-left"
+        >
+          <Search size={14} className="flex-shrink-0" />
+          <span className="flex-1 text-sm">Search projects, SQL...</span>
+          <span className="flex items-center gap-0.5 flex-shrink-0">
+            <kbd className="inline-flex items-center justify-center px-1.5 h-5 rounded border
+              border-[var(--border)] bg-[var(--card)] text-[10px] font-mono text-[var(--text-subtle)]">Ctrl</kbd>
+            <kbd className="inline-flex items-center justify-center px-1.5 h-5 rounded border
+              border-[var(--border)] bg-[var(--card)] text-[10px] font-mono text-[var(--text-subtle)]">K</kbd>
+          </span>
+        </button>
 
         <div className="ml-auto flex items-center gap-2">
           {/* Notifications */}
@@ -185,6 +206,13 @@ export default function Navbar({ onNavigate }: NavbarProps) {
           </>
         )}
       </AnimatePresence>
+      {/* ── Global Search Modal ── */}
+      <GlobalSearch
+        open={searchOpen}
+        onClose={() => setSearchOpen(false)}
+        onNavigate={(page) => { onNavigate(page); setSearchOpen(false); }}
+        recentProjects={myProjects}
+      />
     </>
   );
 }

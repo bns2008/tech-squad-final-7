@@ -27,7 +27,7 @@ export default function RegisterPage({ onNavigate }: { onNavigate: (p: string) =
       const { user, token } = await registerUser(form.name, form.email, form.password);
       setUser(user); setToken(token);
       setDone(true);
-      toast.success("Account created! Welcome to ER AI Studio.");
+      toast.success("Account created! Welcome to Schemalens.");
       setTimeout(() => onNavigate("dashboard"), 1500);
     } catch (err: any) { setError(err.message); }
     finally { setLoading(false); }

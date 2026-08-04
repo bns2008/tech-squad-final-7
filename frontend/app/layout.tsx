@@ -4,9 +4,9 @@ import { Toaster } from "react-hot-toast";
 import Providers from "./providers";
 
 export const metadata: Metadata = {
-  title: "ER AI Studio – Convert ER Diagrams to Database Code",
+  title: "Schemalens – AI-Powered Database Schema Toolkit",
   description:
-    "Upload your ER Diagram and generate SQL, PostgreSQL, MySQL, SQLite, MongoDB, Prisma and more in seconds using AI.",
+    "Convert ER diagrams to SQL, generate schemas from plain English, migrate between dialects, and write SQL live. Supports PostgreSQL, MySQL, SQLite, MSSQL & Oracle.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

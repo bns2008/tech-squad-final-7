@@ -3,14 +3,16 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Lock, Sun, Globe, Bell, Shield, Trash2,
-  Eye, EyeOff, AlertCircle
+  Eye, EyeOff, AlertCircle, BarChart3
 } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { changePassword, deleteAccount } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import toast from "react-hot-toast";
+import UsagePage from "@/components/pages/UsagePage";
 
 const TABS = [
+  { id: "usage",     label: "Usage",           icon: BarChart3 },
   { id: "password",  label: "Change Password", icon: Lock },
   { id: "theme",     label: "Appearance",       icon: Sun },
   { id: "language",  label: "Language",         icon: Globe },
@@ -19,9 +21,9 @@ const TABS = [
   { id: "danger",    label: "Delete Account",   icon: Trash2, danger: true },
 ];
 
-export default function SettingsPage() {
+export default function SettingsPage({ onNavigate }: { onNavigate: (p: string) => void }) {
   const { user, theme, setTheme, selectedLanguage, setSelectedLanguage, logout } = useStore();
-  const [tab, setTab]     = useState("password");
+  const [tab, setTab]     = useState("usage");
   const [saving, setSaving] = useState(false);
 
   const [notifs,  setNotifs]  = useState({ email: true,  browser: false, weekly: true });
@@ -104,11 +106,12 @@ export default function SettingsPage() {
                 tab === id
                   ? danger
                     ? "bg-red-50 dark:bg-red-500/10 text-red-600"
-                    : "bg-[var(--primary-light)] text-primary-600"
+                    : theme === "dark" ? "text-black" : "text-white"
                   : danger
                     ? "text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-500"
                     : "text-[var(--text-muted)] hover:bg-[var(--surface)] hover:text-[var(--text)]"
               )}
+              style={tab === id && !danger ? { background: "var(--primary)" } : undefined}
             >
               <Icon size={15} />{label}
             </button>
@@ -123,6 +126,11 @@ export default function SettingsPage() {
               initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
             >
+
+              {/* ── Usage ── */}
+              {tab === "usage" && (
+                <UsagePage onNavigate={onNavigate} />
+              )}
 
               {/* ── Change Password ── */}
               {tab === "password" && (
@@ -227,7 +235,7 @@ export default function SettingsPage() {
                   <Row label="Public Profile" desc="Allow others to see your profile">
                     <Toggle checked={privacy.publicProfile} onChange={() => setPrivacy((p) => ({ ...p, publicProfile: !p.publicProfile }))} />
                   </Row>
-                  <Row label="Usage Analytics" desc="Help improve ER AI Studio by sharing anonymous usage data">
+                  <Row label="Usage Analytics" desc="Help improve Schemalens by sharing anonymous usage data">
                     <Toggle checked={privacy.analytics} onChange={() => setPrivacy((p) => ({ ...p, analytics: !p.analytics }))} />
                   </Row>
                   <div className="mt-6 p-4 rounded-xl bg-[var(--surface)] border border-[var(--border)]">
