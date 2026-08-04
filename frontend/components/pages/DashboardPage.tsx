@@ -1,17 +1,18 @@
 ﻿"use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Upload, Wand2, Terminal, Bot,
   FolderOpen, FileCode, TrendingUp, Sparkles,
   ArrowRight, Zap, GitMerge,
   Database, BarChart3, Download, Clock,
-  ChevronRight, Star, Info,
+  ChevronRight, Star, Info, Search,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { cn, timeAgo } from "@/lib/utils";
 import { conversionsLeft, getPlan } from "@/lib/subscription";
 import UpgradeLimitDialog from "@/components/UpgradeLimitDialog";
+import GlobalSearch from "@/components/GlobalSearch";
 import type { LucideIcon } from "lucide-react";
 
 // ── Fade-up animation variant ─────────────────────────────────────────────────
@@ -129,6 +130,19 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (p: string) 
   const recentProject = [...myProjects].sort((a, b) => b.updatedAt - a.updatedAt)[0] ?? null;
 
   const [limitOpen, setLimitOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+
+  // Global Ctrl+K shortcut
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "k") {
+        e.preventDefault();
+        setSearchOpen(true);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
 
   return (
     <div className="w-full max-w-6xl mx-auto space-y-6">
@@ -165,8 +179,32 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (p: string) 
         </div>
       </motion.div>
 
+      {/* ── Search trigger bar ───────────────────────────────────────────── */}
+      <motion.button
+        {...fadeUp(0.05)}
+        onClick={() => setSearchOpen(true)}
+        aria-label="Open search (Ctrl+K)"
+        className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-[var(--border)]
+          bg-[var(--card)] text-left transition-all duration-200 group
+          hover:border-[var(--primary)]/50 hover:shadow-md focus:outline-none
+          focus:ring-2 focus:ring-[var(--primary)]/30"
+      >
+        <Search size={16} className="text-[var(--text-subtle)] flex-shrink-0 group-hover:text-[var(--primary)] transition-colors" />
+        <span className="flex-1 text-sm text-[var(--text-subtle)]">
+          Search projects, SQL, templates or ask AI...
+        </span>
+        <span className="flex items-center gap-1 flex-shrink-0">
+          <kbd className="inline-flex items-center justify-center px-1.5 h-5 rounded border
+            border-[var(--border)] bg-[var(--surface)] text-[10px] font-mono
+            text-[var(--text-subtle)]">Ctrl</kbd>
+          <kbd className="inline-flex items-center justify-center px-1.5 h-5 rounded border
+            border-[var(--border)] bg-[var(--surface)] text-[10px] font-mono
+            text-[var(--text-subtle)]">K</kbd>
+        </span>
+      </motion.button>
+
       {/* ── Usage bar ────────────────────────────────────────────────────── */}
-      <motion.div {...fadeUp(0.06)} className="card px-5 py-4">
+      <motion.div {...fadeUp(0.08)} className="card px-5 py-4">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-3 text-xs font-semibold text-[var(--text-muted)]">
             <Zap size={13} className="text-[var(--primary)]" />
@@ -430,6 +468,14 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (p: string) 
         onClose={() => setLimitOpen(false)}
         reason="conversions"
         onNavigatePricing={() => onNavigate("pricing")}
+      />
+
+      {/* ── Global Search Modal ───────────────────────────────────────────── */}
+      <GlobalSearch
+        open={searchOpen}
+        onClose={() => setSearchOpen(false)}
+        onNavigate={(page) => { onNavigate(page); }}
+        recentProjects={myProjects}
       />
     </div>
   );
