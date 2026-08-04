@@ -1,18 +1,17 @@
 ﻿"use client";
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Upload, Wand2, Terminal, Bot,
   FolderOpen, FileCode, TrendingUp, Sparkles,
-  ArrowRight, Search, Zap, GitMerge,
+  ArrowRight, Zap, GitMerge,
   Database, BarChart3, Download, Clock,
-  ChevronRight, Star, Info, X,
+  ChevronRight, Star, Info,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { cn, timeAgo } from "@/lib/utils";
 import { conversionsLeft, getPlan } from "@/lib/subscription";
 import UpgradeLimitDialog from "@/components/UpgradeLimitDialog";
-import UsageBanner from "@/components/UsageBanner";
 import type { LucideIcon } from "lucide-react";
 
 // ── Fade-up animation variant ─────────────────────────────────────────────────
@@ -114,7 +113,7 @@ function ActionCard({
 
 // ── Main Dashboard Page ───────────────────────────────────────────────────────
 export default function DashboardPage({ onNavigate }: { onNavigate: (p: string) => void }) {
-  const { user, projects: allProjects, getSubscription, quickHistory, theme } = useStore();
+  const { user, projects: allProjects, getSubscription, quickHistory } = useStore();
 
   const sub        = getSubscription();
   const plan       = getPlan(sub);
@@ -125,258 +124,76 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (p: string) 
   const totalDone  = myProjects.reduce((s, p) => s + p.files.filter((f) => f.status === "completed").length, 0);
   const totalFiles = myProjects.reduce((s, p) => s + p.files.length, 0);
   const left       = conversionsLeft(sub);
-  const firstName  = user?.name?.split(" ")[0] ?? "there";
 
   // Recent project
   const recentProject = [...myProjects].sort((a, b) => b.updatedAt - a.updatedAt)[0] ?? null;
 
-  // Search
-  const [search, setSearch] = useState("");
   const [limitOpen, setLimitOpen] = useState(false);
-  const searchRef = useRef<HTMLInputElement>(null);
-
-  // Keyboard shortcut: / focuses search
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === "/" && document.activeElement?.tagName !== "INPUT" && document.activeElement?.tagName !== "TEXTAREA") {
-        e.preventDefault();
-        searchRef.current?.focus();
-      }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, []);
-
-  // 3D tilt state
-  const [tilt, setTilt] = useState({ x: 0, y: 0 });
-  const heroRef = useRef<HTMLElement>(null);
-
-  const handleMouseMove = (e: React.MouseEvent<HTMLElement>) => {
-    const el = heroRef.current;
-    if (!el) return;
-    const { left, top, width, height } = el.getBoundingClientRect();
-    const x = ((e.clientX - left) / width  - 0.5) * 10;  // -5 to +5 deg
-    const y = ((e.clientY - top)  / height - 0.5) * -10; // +5 to -5 deg
-    setTilt({ x, y });
-  };
-  const handleMouseLeave = () => setTilt({ x: 0, y: 0 });
-
-  // Derive hour greeting
-  const hour = new Date().getHours();
-  const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
-
-  // 3D shadow stack
-  const heroShadow = theme === "light"
-    ? "0 2px 0 0 #e8d5d5, 0 4px 0 0 #ddc9c9, 0 6px 0 0 #d2bebe, 0 12px 32px -4px rgba(0,0,0,0.18), 0 40px 80px -20px rgba(0,0,0,0.14)"
-    : "0 2px 0 0 rgba(255,255,255,0.05), 0 4px 0 0 rgba(255,255,255,0.03), 0 12px 32px -4px rgba(0,0,0,0.55), 0 40px 80px -20px rgba(0,0,0,0.4)";
 
   return (
-    <div className="w-full max-w-6xl mx-auto space-y-8">
-
-      {/* ── Usage banner (free only) ─────────────────────────────────────── */}
-      {!isPro && <UsageBanner onNavigatePricing={() => onNavigate("pricing")} />}
+    <div className="w-full max-w-6xl mx-auto space-y-6">
 
       {/* ── HERO ─────────────────────────────────────────────────────────── */}
-      {/* Perspective wrapper — gives the 3D space */}
-      <div style={{ perspective: "1200px", perspectiveOrigin: "50% 40%" }}>
-        <motion.section
-          ref={heroRef}
-          onMouseMove={handleMouseMove}
-          onMouseLeave={handleMouseLeave}
-          animate={{
-            rotateX: tilt.y,
-            rotateY: tilt.x,
-            scale: tilt.x !== 0 || tilt.y !== 0 ? 1.018 : 1,
-          }}
-          transition={{ type: "spring", stiffness: 260, damping: 28, mass: 0.6 }}
-          className="relative overflow-hidden rounded-2xl border cursor-default"
-          style={{
-            background: theme === "light" ? "#FCEFEF" : "var(--card)",
-            borderColor: theme === "light" ? "rgba(220,180,180,0.6)" : "var(--border)",
-            boxShadow: heroShadow,
-            transformStyle: "preserve-3d",
-            willChange: "transform",
-          }}
-        >
-          {/* ── Floating orb top-right ── */}
-          <motion.div
-            animate={{ y: [0, -10, 0], x: [0, 6, 0] }}
-            transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
-            className="absolute -top-16 -right-16 w-64 h-64 rounded-full pointer-events-none"
-            style={{
-              background: theme === "light"
-                ? "radial-gradient(circle, rgba(255,180,180,0.35) 0%, transparent 70%)"
-                : "radial-gradient(circle, rgba(var(--primary-rgb, 99,102,241),0.18) 0%, transparent 70%)",
-              filter: "blur(28px)",
-            }}
-          />
-          {/* ── Floating orb bottom-left ── */}
-          <motion.div
-            animate={{ y: [0, 8, 0], x: [0, -5, 0] }}
-            transition={{ duration: 6.5, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-            className="absolute -bottom-14 -left-14 w-56 h-56 rounded-full pointer-events-none"
-            style={{
-              background: theme === "light"
-                ? "radial-gradient(circle, rgba(200,160,200,0.25) 0%, transparent 70%)"
-                : "radial-gradient(circle, rgba(16,185,129,0.12) 0%, transparent 70%)",
-              filter: "blur(24px)",
-            }}
-          />
+      <motion.div {...fadeUp(0)} className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+        {/* Left: greeting + plan info */}
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-[var(--text)] flex items-center gap-2">
+            Welcome back, {user?.name?.split(" ")[0] ?? "there"} 👋
+          </h1>
+          <p className="mt-1 text-sm text-[var(--text-muted)]">
+            {isPro ? "Pro Plan" : "Free Plan"} · {left} of {plan.conversionsPerMonth} conversions remaining
+          </p>
+        </div>
 
-          {/* ── Dot grid ── */}
-          <div className="absolute inset-0 pointer-events-none"
-            style={{
-              backgroundImage: "radial-gradient(circle, rgba(0,0,0,0.10) 1px, transparent 1px)",
-              backgroundSize: "24px 24px",
-              opacity: theme === "light" ? 0.35 : 0.12,
-            }}
-          />
-
-          {/* ── Shine layer — follows tilt ── */}
-          <motion.div
-            className="absolute inset-0 pointer-events-none rounded-2xl"
-            animate={{
-              background: `radial-gradient(circle at ${50 + tilt.x * 3}% ${50 - tilt.y * 3}%, rgba(255,255,255,${theme === "light" ? "0.28" : "0.07"}) 0%, transparent 60%)`,
-            }}
-            transition={{ type: "spring", stiffness: 260, damping: 28 }}
-          />
-
-          {/* ── Floating 3D "chip" elements ── */}
-          <motion.div
-            animate={{ y: [0, -6, 0], rotate: [0, 3, 0] }}
-            transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-            className="absolute top-6 right-8 hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold border backdrop-blur-sm select-none"
-            style={{
-              background: theme === "light" ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.06)",
-              borderColor: theme === "light" ? "rgba(200,150,150,0.4)" : "rgba(255,255,255,0.1)",
-              color: theme === "light" ? "#b06060" : "rgba(255,255,255,0.5)",
-              boxShadow: "0 4px 12px rgba(0,0,0,0.10)",
-              transform: "translateZ(20px)",
-            }}
-          >
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" /> AI Powered
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            whileHover={{ y: -2, boxShadow: "0 8px 24px -4px rgba(5,150,105,0.18), 0 2px 8px -2px rgba(16,24,40,0.08)" }}
-            className="card p-5 flex flex-col gap-4 cursor-pointer
-              hover:border-emerald-300 dark:hover:border-emerald-700 transition-colors"
-            onClick={() => onNavigate("generate")}
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-100 dark:border-emerald-800/40 flex items-center justify-center flex-shrink-0">
-                <Wand2 size={18} className="text-emerald-600" />
-              </div>
-              <p className="font-bold text-[var(--text)] text-sm">Generate</p>
-            </div>
-            <span className="self-start text-[10px] font-semibold px-2 py-0.5 rounded-md
-              bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400
-              border border-emerald-100 dark:border-emerald-800/40">
-              text → sql
-            </span>
-            <p className="text-[11px] text-[var(--text-muted)] leading-relaxed flex-1">
-              Describe your database in plain English and get a full schema.
-            </p>
+        {/* Right: action buttons */}
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {!isPro && (
             <button
-              className="text-xs w-full justify-center flex items-center gap-1.5 px-4 py-2 rounded-lg
-                font-semibold bg-emerald-600 hover:bg-emerald-700 text-white transition-colors"
+              onClick={() => onNavigate("pricing")}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white transition-all"
+              style={{ background: "var(--primary)" }}
             >
-              Open generate <ArrowRight size={12} />
+              <Zap size={14} /> Upgrade to Pro
             </button>
-          </motion.div>
-
-          <motion.div
-            animate={{ y: [0, -5, 0], rotate: [0, 2, 0] }}
-            transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut", delay: 1.5 }}
-            className="absolute top-8 left-8 hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold border backdrop-blur-sm select-none"
-            style={{
-              background: theme === "light" ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.06)",
-              borderColor: theme === "light" ? "rgba(200,150,150,0.4)" : "rgba(255,255,255,0.1)",
-              color: theme === "light" ? "#b06060" : "rgba(255,255,255,0.5)",
-              boxShadow: "0 4px 12px rgba(0,0,0,0.10)",
-              transform: "translateZ(24px)",
-            }}
+          )}
+          <button
+            onClick={() => onNavigate("projects")}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold border border-[var(--border)] bg-[var(--card)] text-[var(--text)] hover:border-[var(--primary)]/50 transition-all"
           >
-            🗄 Multi-dialect
-          </motion.div>
+            + New Project
+          </button>
+        </div>
+      </motion.div>
 
-          {/* ── Content ── */}
-          <div className="relative px-6 sm:px-10 py-10 sm:py-14 flex flex-col items-center text-center">
-
-            {/* Greeting pill */}
-            <motion.div {...fadeUp(0)}
-              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-[var(--border)] mb-6 text-xs font-medium text-[var(--text-muted)]"
-              style={{ background: "var(--surface)" }}
-            >
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              {greeting}, {firstName} 👋
-            </motion.div>
-
-            {/* Headline */}
-            <motion.h1 {...fadeUp(0.07)}
-              className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-[var(--text)] leading-[1.15] tracking-tight max-w-2xl"
-            >
-              Build, Convert and{" "}
-              <span style={{ color: "var(--primary)" }}>Optimize</span>{" "}
-              Databases with AI
-            </motion.h1>
-
-            {/* Subtitle */}
-            <motion.p {...fadeUp(0.12)}
-              className="mt-4 text-sm sm:text-base text-[var(--text-muted)] max-w-xl leading-relaxed"
-            >
-              Upload ER diagrams, describe schemas in plain English, or migrate SQL between dialects —
-              all powered by AI, delivered in seconds.
-            </motion.p>
-
-            {/* Search bar */}
-            <motion.div {...fadeUp(0.17)} className="relative mt-7 w-full max-w-lg">
-              <Search size={15} className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-subtle)] pointer-events-none" />
-              <input
-                ref={searchRef}
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search projects, SQL, templates…"
-                className="w-full pl-11 pr-12 py-3 rounded-xl border border-[var(--border)]
-                  bg-[var(--surface)] text-[var(--text)] text-sm placeholder:text-[var(--text-subtle)]
-                  focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/20 focus:border-[var(--primary)]
-                  transition-all duration-200 shadow-sm"
-              />
-              <kbd className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[10px] px-1.5 py-0.5 rounded
-                border border-[var(--border)] text-[var(--text-subtle)] font-mono hidden sm:block">
-                /
-              </kbd>
-              {search && (
-                <button onClick={() => setSearch("")}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[var(--text-subtle)] hover:text-[var(--text)] sm:hidden">
-                  <X size={14} />
-                </button>
-              )}
-            </motion.div>
-
-            {/* Plan badge */}
-            <motion.div {...fadeUp(0.2)} className="mt-4 flex items-center gap-2">
-              {isPro ? (
-                <span className="flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full
-                  bg-amber-50 dark:bg-amber-500/10 text-amber-600 border border-amber-200 dark:border-amber-500/20">
-                  <Star size={10} className="fill-amber-500 text-amber-500" /> Pro Plan
-                </span>
-              ) : (
-                <button onClick={() => onNavigate("pricing")}
-                  className="flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full
-                    bg-[var(--primary-light)] text-[var(--primary)] border border-[var(--primary)]/20
-                    hover:border-[var(--primary)]/50 transition-colors">
-                  <Zap size={10} /> Upgrade to Pro — {left} conversions left
-                </button>
-              )}
-            </motion.div>
+      {/* ── Usage bar ────────────────────────────────────────────────────── */}
+      <motion.div {...fadeUp(0.06)} className="card px-5 py-4">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-3 text-xs font-semibold text-[var(--text-muted)]">
+            <Zap size={13} className="text-[var(--primary)]" />
+            <span>{isPro ? "Pro Plan" : "Free Plan"}</span>
+            <span className="text-[var(--border)]">|</span>
+            <span>Monthly Usage</span>
           </div>
-        </motion.section>
-      </div>
+          {!isPro && (
+            <button onClick={() => onNavigate("pricing")} className="text-[11px] font-semibold text-[var(--primary)] hover:underline">
+              Upgrade →
+            </button>
+          )}
+        </div>
+        <div className="flex items-center justify-between text-xs text-[var(--text-muted)] mb-1.5">
+          <span>{left} of {plan.conversionsPerMonth} conversions remaining</span>
+          <span>{sub.conversionsUsedThisMonth} / {plan.conversionsPerMonth} used</span>
+        </div>
+        <div className="h-1.5 rounded-full bg-[var(--surface)] overflow-hidden">
+          <motion.div
+            initial={{ width: 0 }}
+            animate={{ width: `${Math.max(2, Math.min(100, Math.round((sub.conversionsUsedThisMonth / plan.conversionsPerMonth) * 100)))}%` }}
+            transition={{ duration: 0.8, ease: "easeOut", delay: 0.2 }}
+            className="h-full rounded-full"
+            style={{ background: "var(--primary)" }}
+          />
+        </div>
+      </motion.div>
 
       {/* ── Stats ────────────────────────────────────────────────────────── */}
       <section>
@@ -518,19 +335,19 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (p: string) 
                 </button>
               )}
             </div>
-            <span className="self-start text-[10px] font-semibold px-2 py-0.5 rounded-md
-              bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400
-              border border-emerald-100 dark:border-emerald-800/40">
-              sql → sql
-            </span>
-            <p className="text-[11px] text-[var(--text-muted)] leading-relaxed flex-1">
-              Paste SQL written for one database and convert it to another dialect.
-            </p>
-            <button
-              className="text-xs w-full justify-center flex items-center gap-1.5 px-4 py-2 rounded-lg
-                font-semibold bg-emerald-600 hover:bg-emerald-700 text-white transition-colors"
-            >
-              Open migrate <ArrowRight size={12} />
+          )}
+        </div>
+
+        {/* Usage panel */}
+        <div>
+          <div className="flex items-center justify-between mb-3 px-1">
+            <motion.h2 {...fadeUp(0.14)}
+              className="text-xs font-bold uppercase tracking-widest text-[var(--text-subtle)]">
+              Plan Usage
+            </motion.h2>
+            <button onClick={() => onNavigate("usage")}
+              className="text-[11px] font-semibold text-[var(--primary)] hover:underline flex items-center gap-0.5">
+              Full details <ChevronRight size={11} />
             </button>
           </div>
           <motion.div {...fadeUp(0.2)} className="card p-5 space-y-4">

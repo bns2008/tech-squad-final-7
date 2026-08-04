@@ -6,6 +6,7 @@ import {
   Clock, TrendingUp, CheckCircle2, AlertTriangle,
   Activity, Layers, RefreshCw,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { cn, timeAgo } from "@/lib/utils";
 import { conversionsLeft, getPlan, effectiveLimits } from "@/lib/subscription";
@@ -40,7 +41,7 @@ function Ring({ pct, color, size = 72 }: { pct: number; color: string; size?: nu
 // ── Usage meter row ───────────────────────────────────────────────────────────
 function Meter({ label, used, total, color, icon: Icon, desc }: {
   label: string; used: number; total: number;
-  color: string; icon: React.ElementType; desc?: string;
+  color: string; icon: LucideIcon; desc?: string;
 }) {
   const pct = Math.min(100, Math.round((used / Math.max(total, 1)) * 100));
   const isHigh = pct >= 80;
@@ -81,7 +82,7 @@ function Meter({ label, used, total, color, icon: Icon, desc }: {
 // ── Stat tile ─────────────────────────────────────────────────────────────────
 function StatTile({ label, value, icon: Icon, color, bg, sub: subtitle }: {
   label: string; value: number | string;
-  icon: React.ElementType; color: string; bg: string; sub?: string;
+  icon: LucideIcon; color: string; bg: string; sub?: string;
 }) {
   return (
     <div className="card p-4 flex items-start gap-3">
