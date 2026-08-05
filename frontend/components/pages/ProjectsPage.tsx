@@ -157,8 +157,8 @@ export default function ProjectsPage({ onNavigate }: { onNavigate: (p: string) =
             <button
               onClick={() => { setSelectMode(true); setSelected(new Set()); }}
               className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold
-                border border-[var(--border)] text-[var(--text)] bg-[var(--card)]
-                hover:bg-[var(--surface)] hover:border-primary-400 hover:text-primary-600
+                border border-[var(--border)] text-[var(--text-muted)] bg-[var(--card)]
+                hover:bg-[var(--surface)] hover:text-[var(--text)] hover:border-[var(--text-subtle)]
                 transition-all"
               title="Select projects to delete"
             >
@@ -297,8 +297,8 @@ export default function ProjectsPage({ onNavigate }: { onNavigate: (p: string) =
                 )}
 
                 {/* Icon */}
-                <div className="w-11 h-11 rounded-xl bg-primary-50 dark:bg-primary-900/30 flex items-center justify-center">
-                  <Database size={20} className="text-primary-600" />
+                <div className="w-11 h-11 rounded-xl bg-[var(--surface)] border border-[var(--border)] flex items-center justify-center">
+                  <Database size={20} className="text-[var(--text-muted)]" />
                 </div>
 
                 {/* Name / rename */}

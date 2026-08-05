@@ -2,6 +2,7 @@
 import { useEffect } from "react";
 import { useStore } from "@/lib/store";
 import { seedSuperAdmin } from "@/lib/auth";
+import NetworkStatus from "@/components/NetworkStatus";
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const { theme } = useStore();
@@ -11,5 +12,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     document.documentElement.classList.toggle("dark", theme === "dark");
   }, [theme]);
 
-  return <>{children}</>;
+  return (
+    <>
+      {children}
+      <NetworkStatus />
+    </>
+  );
 }

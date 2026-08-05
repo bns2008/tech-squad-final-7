@@ -15,7 +15,7 @@ import type { QuickConvertResult } from "@/lib/types";
 import UpgradeLimitDialog from "@/components/UpgradeLimitDialog";
 import dynamic from "next/dynamic";
 import toast from "react-hot-toast";
-import { apiSaveQuickHistory, apiClearQuickHistory, apiSaveToolHistory } from "@/lib/api";
+import { apiSaveConversion, apiClearQuickHistory } from "@/lib/api";
 
 const MonacoEditor = dynamic(
   () => import("@monaco-editor/react").then((m) => m.default),
@@ -39,11 +39,11 @@ const PROCESS_STEPS = [
 ];
 
 const DB_OPTIONS = [
-  { value: "postgresql", label: "PostgreSQL", short: "PG",   color: "text-blue-500",   border: "border-blue-400",   bg: "bg-blue-50 dark:bg-blue-900/20"    },
-  { value: "mysql",      label: "MySQL",      short: "MY",   color: "text-orange-500", border: "border-orange-400", bg: "bg-orange-50 dark:bg-orange-900/20" },
-  { value: "sqlite",     label: "SQLite",     short: "SL",   color: "text-sky-500",    border: "border-sky-400",    bg: "bg-sky-50 dark:bg-sky-900/20"       },
-  { value: "mssql",      label: "SQL Server", short: "SS",   color: "text-red-500",    border: "border-red-400",    bg: "bg-red-50 dark:bg-red-900/20"       },
-  { value: "oracle",     label: "Oracle",     short: "ORA",  color: "text-amber-500",  border: "border-amber-400",  bg: "bg-amber-50 dark:bg-amber-900/20"   },
+  { value: "postgresql", label: "PostgreSQL", short: "PG",   color: "text-[var(--text)]", border: "border-[var(--text-subtle)]", bg: "bg-[var(--card)]" },
+  { value: "mysql",      label: "MySQL",      short: "MY",   color: "text-[var(--text)]", border: "border-[var(--text-subtle)]", bg: "bg-[var(--card)]" },
+  { value: "sqlite",     label: "SQLite",     short: "SL",   color: "text-[var(--text)]", border: "border-[var(--text-subtle)]", bg: "bg-[var(--card)]" },
+  { value: "mssql",      label: "SQL Server", short: "SS",   color: "text-[var(--text)]", border: "border-[var(--text-subtle)]", bg: "bg-[var(--card)]" },
+  { value: "oracle",     label: "Oracle",     short: "ORA",  color: "text-[var(--text)]", border: "border-[var(--text-subtle)]", bg: "bg-[var(--card)]" },
 ];
 
 export default function QuickConvertPage({ onNavigate }: { onNavigate: (p: string) => void }) {
@@ -103,26 +103,25 @@ export default function QuickConvertPage({ onNavigate }: { onNavigate: (p: strin
         };
         setQcResult(result); setQcStatus("done");
         addQuickResult(result); incrementConversions();
-        // ── Save to PostgreSQL so history persists across logins ──
+        // ── Persist to PostgreSQL ──────────────────────────────────────────
         const numericId = parseInt(user?.id ?? "", 10);
         if (!isNaN(numericId)) {
-          apiSaveQuickHistory({
-            user_id: numericId, id: result.id, filename: result.filename,
-            sql: result.sql, stats: result.stats, processingTime: result.processingTime,
-          }).catch(() => {});
-          // ── Save to tool history (shown in History page) ──
-          apiSaveToolHistory({
-            user_id: numericId,
-            tool: "quick_convert",
-            action_label: `${result.filename} → ${selectedDb.toUpperCase()}`,
-            result_sql: result.sql,
-            dialect_from: "image",
-            dialect_to: selectedDb,
-            tables_count: result.stats.tables,
-            processing_time_ms: result.processingTime,
-            success: true,
-            extra_json: { filename: result.filename, relationships: result.stats.relationships },
-          }).catch((e) => console.error("tool-history save failed:", e));
+          // 1. Upload image to DB → get image_id
+          const { apiUploadImage, apiSaveQuickHistory: saveQH, apiSaveToolHistory: saveTH, apiSaveConversion: saveConv } = await import("@/lib/api");
+          let imageId: number | undefined;
+          try {
+            const uploaded = await apiUploadImage(numericId, file);
+            imageId = uploaded.image_id;
+          } catch { /* non-fatal */ }
+
+          // 2. Save quick history
+          saveQH({ user_id: numericId, id: result.id, filename: result.filename, sql: result.sql, stats: result.stats, processingTime: result.processingTime }).catch(() => {});
+
+          // 3. Save tool history
+          saveTH({ user_id: numericId, tool: "quick_convert", action_label: `${result.filename} → ${selectedDb.toUpperCase()}`, result_sql: result.sql, dialect_from: "image", dialect_to: selectedDb, tables_count: result.stats.tables, processing_time_ms: result.processingTime, success: true, extra_json: { filename: result.filename, relationships: result.stats.relationships } }).catch(() => {});
+
+          // 4. Save conversion with image_id
+          saveConv({ user_id: numericId, image_id: imageId, generated_ddl: result.sql, dialect: selectedDb, success: true, tables_count: result.stats.tables, relationships_count: result.stats.relationships, execution_time_ms: result.processingTime, tool: "quick_convert" }).catch(() => {});
         }
         toast.success("Conversion complete!");
       } catch (err: any) {
@@ -156,9 +155,9 @@ export default function QuickConvertPage({ onNavigate }: { onNavigate: (p: strin
       <div className="flex items-start justify-between mb-8">
         <div>
           <div className="flex items-center gap-3 mb-2">
-            <Sparkles size={22} className="text-primary-600" />
+            <Sparkles size={22} className="text-[var(--text-muted)]" />
             <h1 className="text-3xl font-bold text-[var(--text)]">Quick Convert</h1>
-            <span className="badge badge-purple text-xs px-2.5 py-1">No project needed</span>
+            <span className="badge badge-gray text-xs px-2.5 py-1">No project needed</span>
           </div>
           <p className="text-base text-[var(--text-muted)]">
             Upload an ER diagram and get executable SQL instantly.&nbsp;
@@ -232,9 +231,9 @@ export default function QuickConvertPage({ onNavigate }: { onNavigate: (p: strin
                   <motion.div
                     animate={isDragActive ? { scale: 1.18, rotate: -5 } : { scale: 1, rotate: 0 }}
                     transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                    className="w-20 h-20 rounded-2xl bg-primary-50 dark:bg-primary-900/30 flex items-center justify-center"
+                    className="w-20 h-20 rounded-2xl bg-[var(--surface)] border border-[var(--border)] flex items-center justify-center"
                   >
-                    <Upload size={34} className="text-primary-600" />
+                    <Upload size={34} className="text-[var(--text-muted)]" />
                   </motion.div>
                   <div>
                     <p className="font-bold text-[var(--text)] text-2xl mb-2">
@@ -242,7 +241,7 @@ export default function QuickConvertPage({ onNavigate }: { onNavigate: (p: strin
                     </p>
                     <p className="text-base text-[var(--text-muted)]">
                       or{" "}
-                      <span className="text-primary-600 font-semibold underline decoration-dotted cursor-pointer">
+                      <span className="text-[var(--text)] font-semibold underline decoration-dotted cursor-pointer">
                         click to browse
                       </span>
                     </p>

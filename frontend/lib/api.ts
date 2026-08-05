@@ -146,9 +146,9 @@ export async function apiIncrementConversions(userId: number) {
 }
 
 export async function apiSaveConversion(p: {
-  user_id: number; image_id: number; generated_ddl: string; dialect: string;
+  user_id: number; image_id?: number | null; generated_ddl: string; dialect: string;
   success: boolean; error_message?: string; execution_time_ms?: number;
-  tables_count?: number; relationships_count?: number;
+  tables_count?: number; relationships_count?: number; tool?: string;
 }) {
   return request<{ message: string; conversion_id: number }>("/save-conversion", {
     method: "POST", body: JSON.stringify(p),
@@ -228,4 +228,129 @@ export async function apiUploadImage(userId: number, file: File) {
   try { body = await res.json(); } catch { body = {}; }
   if (!res.ok) throw new Error(body?.detail ?? `Upload failed (${res.status})`);
   return body as { message: string; image_id: number; filename: string; status: string };
+}
+
+// ─── Admin ────────────────────────────────────────────────────────────────────
+
+export interface AdminUserRecord {
+  id: number;
+  full_name: string;
+  email: string;
+  role: string;
+  plan: string;
+  is_active: boolean;
+  email_verified: boolean;
+  avatar?: string | null;
+  created_at?: string;
+  last_login?: string | null;
+  conversions_used_this_month: number;
+  project_count: number;
+  conversion_count: number;
+}
+
+export interface AdminStats {
+  total_users: number;
+  active_users: number;
+  suspended_users: number;
+  pro_users: number;
+  free_users: number;
+  total_projects: number;
+  total_conversions: number;
+  successful_conversions: number;
+  failed_conversions: number;
+  recently_active_users: number;
+}
+
+export async function apiAdminGetUsers() {
+  return request<AdminUserRecord[]>("/admin/users");
+}
+
+export async function apiAdminGetStats() {
+  return request<AdminStats>("/admin/stats");
+}
+
+export async function apiAdminSuspendUser(userId: number, suspend: boolean) {
+  return request<{ message: string; user: BackendUser }>(`/admin/users/${userId}/suspend`, {
+    method: "PUT", body: JSON.stringify({ suspend }),
+  });
+}
+
+export async function apiAdminChangePlan(userId: number, plan: "free" | "pro") {
+  return request<{ message: string; user: BackendUser }>(`/admin/users/${userId}/plan`, {
+    method: "PUT", body: JSON.stringify({ plan }),
+  });
+}
+
+export async function apiAdminChangeRole(userId: number, role: "user" | "admin") {
+  return request<{ message: string; user: BackendUser }>(`/admin/users/${userId}/role`, {
+    method: "PUT", body: JSON.stringify({ role }),
+  });
+}
+
+export async function apiAdminResetConversions(userId: number) {
+  return request<{ message: string; user: BackendUser }>(`/admin/users/${userId}/reset-conversions`, {
+    method: "PUT",
+  });
+}
+
+export async function apiAdminDeleteUser(userId: number) {
+  return request<{ message: string }>(`/admin/users/${userId}`, { method: "DELETE" });
+}
+
+export async function apiAdminGetUserProjects(userId: number) {
+  return request<BackendProject[]>(`/admin/users/${userId}/projects`);
+}
+
+export async function apiAdminGetUserProjectImages(userId: number) {
+  return request<{
+    id: number; image_uid: string; original_filename: string;
+    project_name: string; project_uid: string; status: string;
+    tables_count: number; relationships_count: number;
+    processing_time_ms?: number | null; generated_sql?: string | null;
+    uploaded_at: string; completed_at?: string | null;
+  }[]>(`/admin/users/${userId}/project-images`);
+}
+
+export async function apiAdminDeleteProject(projectUid: string) {
+  return request<{ message: string }>(`/admin/projects/${projectUid}`, { method: "DELETE" });
+}
+
+// ─── Project Images ───────────────────────────────────────────────────────────
+
+export interface ProjectImageRecord {
+  id: number;
+  image_uid: string;
+  user_id: number;
+  project_uid: string;
+  original_filename: string;
+  mime_type?: string | null;
+  file_size_bytes?: number | null;
+  image_data?: string | null;
+  status: string;
+  generated_sql?: string | null;
+  tables_count: number;
+  relationships_count: number;
+  processing_time_ms?: number | null;
+  uploaded_at: string;
+  completed_at?: string | null;
+}
+
+export async function apiUpsertProjectImage(p: {
+  image_uid: string; user_id: number; project_uid: string;
+  original_filename: string; mime_type?: string; file_size_bytes?: number;
+  image_data?: string; status: string; generated_sql?: string;
+  tables_count?: number; relationships_count?: number;
+  processing_time_ms?: number; completed_at?: number;
+}) {
+  return request<{ message: string; id: number }>("/project-images", {
+    method: "POST", body: JSON.stringify(p),
+  });
+}
+
+export async function apiGetProjectImages(projectUid: string) {
+  return request<ProjectImageRecord[]>(`/project-images/${projectUid}`);
+}
+
+export async function apiDeleteProjectImage(imageUid: string) {
+  return request<{ message: string }>(`/project-images/${imageUid}`, { method: "DELETE" });
 }

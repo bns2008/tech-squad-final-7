@@ -16,9 +16,9 @@ const TOOL_CONFIG = {
   quick_convert: {
     label: "Quick Convert",
     icon: Sparkles,
-    color: "text-primary-600",
-    bg: "bg-primary-50 dark:bg-primary-900/30",
-    badge: "badge-purple",
+    color: "text-[var(--text-muted)]",
+    bg: "bg-[var(--surface)] dark:bg-[var(--surface)]",
+    badge: "badge-gray",
   },
   generate: {
     label: "Generate",
@@ -177,10 +177,10 @@ export default function HistoryPage({ onNavigate }: { onNavigate: (p: string) =>
           {FILTER_OPTIONS.map(f => (
             <button key={f.value} onClick={() => setFilter(f.value)}
               className={cn(
-                "px-3.5 py-2 rounded-xl text-sm font-semibold border-2 transition-all",
+                "px-3.5 py-2 rounded-xl text-sm font-semibold border transition-all",
                 filter === f.value
-                  ? "border-primary-500 bg-primary-50 dark:bg-primary-900/20 text-primary-600"
-                  : "border-[var(--border)] text-[var(--text-muted)] hover:border-primary-300 hover:text-primary-600"
+                  ? "border-[var(--text-subtle)] bg-[var(--card)] text-[var(--text)]"
+                  : "border-[var(--border)] bg-[var(--surface)] text-[var(--text-muted)] hover:bg-[var(--card)] hover:border-[var(--text-subtle)] hover:text-[var(--text)]"
               )}>
               {f.label}
             </button>

@@ -229,3 +229,44 @@ VALUES
 -- LEFT JOIN conversions c ON u.id = c.user_id
 -- LEFT JOIN export_logs e ON u.id = e.user_id
 -- GROUP BY u.id, u.full_name, u.plan, u.conversions_used_this_month;
+
+-- =============================================================================
+-- TABLE 11: project_images
+-- ER diagram images uploaded inside a project workspace.
+-- Stores base64 image data so images persist across logins/reloads.
+-- One row per image file per project.
+--
+-- Verify with:
+--   SELECT pi.id, u.full_name, p.name AS project,
+--          pi.original_filename, pi.status,
+--          pi.tables_count, pi.uploaded_at
+--   FROM project_images pi
+--   JOIN users    u ON pi.user_id     = u.id
+--   JOIN projects p ON pi.project_uid = p.project_uid
+--   ORDER BY pi.uploaded_at DESC;
+-- =============================================================================
+
+DROP TABLE IF EXISTS project_images CASCADE;
+
+CREATE TABLE project_images (
+    id                    SERIAL PRIMARY KEY,
+    image_uid             VARCHAR(100)    NOT NULL UNIQUE,
+    user_id               INTEGER         NOT NULL REFERENCES users(id)              ON DELETE CASCADE,
+    project_uid           VARCHAR(100)    NOT NULL REFERENCES projects(project_uid)  ON DELETE CASCADE,
+    original_filename     VARCHAR(255)    NOT NULL,
+    mime_type             VARCHAR(50),
+    file_size_bytes       INTEGER,
+    image_data            TEXT,           -- base64 data URL  e.g. data:image/png;base64,...
+    status                VARCHAR(30)     NOT NULL DEFAULT 'waiting',
+    -- status values: 'waiting' | 'processing' | 'completed' | 'failed'
+    generated_sql         TEXT,           -- SQL produced from this image by AI
+    tables_count          INTEGER         NOT NULL DEFAULT 0,
+    relationships_count   INTEGER         NOT NULL DEFAULT 0,
+    processing_time_ms    INTEGER,
+    uploaded_at           TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    completed_at          TIMESTAMP
+);
+
+CREATE INDEX idx_project_images_user_id     ON project_images(user_id);
+CREATE INDEX idx_project_images_project_uid ON project_images(project_uid);
+CREATE INDEX idx_project_images_uploaded_at ON project_images(uploaded_at DESC);

@@ -44,6 +44,10 @@ export default function RootPage() {
 
   useEffect(() => {
     setMounted(true);
+    // On mount (refresh / relogin), if already authenticated as admin → go straight to admin
+    if (useStore.getState().isAuthenticated && useStore.getState().user?.role === "admin") {
+      setAppPage("admin");
+    }
   }, []);
 
   if (!mounted) return null;
@@ -56,8 +60,11 @@ export default function RootPage() {
           {authPage === "login" && (
             <motion.div key="login" initial={{opacity:0,y:8}} animate={{opacity:1,y:0}} exit={{opacity:0,y:-8}} transition={{duration:0.2}}>
               <LoginPage onNavigate={(p) => {
-                if (p === "dashboard") setAppPage("dashboard");
-                else setAuthPage(p as AuthPage);
+                if (p === "dashboard") {
+                  // Redirect admin users straight to admin panel after login
+                  const loggedInUser = useStore.getState().user;
+                  setAppPage(loggedInUser?.role === "admin" ? "admin" : "dashboard");
+                } else setAuthPage(p as AuthPage);
               }} />
             </motion.div>
           )}

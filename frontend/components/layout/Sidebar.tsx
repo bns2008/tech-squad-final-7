@@ -141,6 +141,22 @@ export default function Sidebar({ page, onNavigate }: SidebarProps) {
       {/* ── Nav ───────────────────────────────────────────────────────────── */}
       <nav className="flex-1 px-[10px] py-3 space-y-0.5 overflow-y-auto overflow-x-hidden">
 
+        {/* ── ADMIN MODE: only show Admin Panel link ─────────────────────── */}
+        {page === "admin" ? (
+          <button
+            onClick={() => handleNavigate("admin")}
+            title="Admin Panel"
+            className={cn(
+              "w-full flex items-center gap-3 px-[18px] py-[11px] rounded-[12px] text-sm font-medium transition-all duration-200",
+              `${activeTextColor(theme)} shadow-[0_8px_24px_rgba(245,158,11,0.20)]`,
+            )}
+            style={{ background: "linear-gradient(90deg,#F59E0B,#D97706)" }}
+          >
+            <Shield size={16} className="flex-shrink-0" />
+            {!sidebarCollapsed && <span>Admin Panel</span>}
+          </button>
+        ) : (
+          <>
         {/* New Project */}
         <button
           onClick={() => handleNavigate("projects")}
@@ -312,24 +328,28 @@ export default function Sidebar({ page, onNavigate }: SidebarProps) {
             ))}
           </div>
         )}
+          </>
+        )}
       </nav>
 
       {/* ── Bottom: settings + sign out + collapse ────────────────────────── */}
       <div className="border-t border-[var(--border)] px-[10px] py-3 space-y-0.5 flex-shrink-0">
 
-        {/* Settings */}
-        <button
-          onClick={() => handleNavigate("settings")}
-          title="Settings"
-          className={cn(
-            "w-full flex items-center gap-3 px-[18px] py-[11px] rounded-[12px] text-sm font-medium transition-all duration-200",
-            page === "settings" ? activeNav : bottomHover,
-          )}
-          style={page === "settings" ? activeStyle : undefined}
-        >
-          <Settings size={15} className="flex-shrink-0" />
-          {!sidebarCollapsed && <span className="text-xs">Settings</span>}
-        </button>
+        {/* Settings — hidden on admin page */}
+        {page !== "admin" && (
+          <button
+            onClick={() => handleNavigate("settings")}
+            title="Settings"
+            className={cn(
+              "w-full flex items-center gap-3 px-[18px] py-[11px] rounded-[12px] text-sm font-medium transition-all duration-200",
+              page === "settings" ? activeNav : bottomHover,
+            )}
+            style={page === "settings" ? activeStyle : undefined}
+          >
+            <Settings size={15} className="flex-shrink-0" />
+            {!sidebarCollapsed && <span className="text-xs">Settings</span>}
+          </button>
+        )}
 
         {/* Sign Out */}
         <button

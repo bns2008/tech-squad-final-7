@@ -6,7 +6,7 @@ import {
   ArrowLeft, Upload, FolderOpen, Image as ImageIcon, FileCode, FileText,
   FileJson, Loader2, CheckCircle, AlertTriangle, Clock, RefreshCw,
   Trash2, Download, Eye, ZoomIn, ZoomOut, Copy, ChevronRight, Database, Archive,
-  Wand2, Sparkles, ChevronDown, ChevronUp,
+  Wand2, Sparkles, ChevronDown, ChevronUp, Lock,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { genId, parseSQLStats, downloadText, downloadJSON, formatDate } from "@/lib/utils";
@@ -46,6 +46,7 @@ export default function ProjectDetailPage({ onNavigate }: { onNavigate: (p: stri
   const [genStatus, setGenStatus]       = useState<"idle" | "processing" | "done" | "error">("idle");
   const [genError, setGenError]         = useState("");
   const [genStep, setGenStep]           = useState(0);
+  const [zipping, setZipping]           = useState(false);
 
   const GEN_STEPS = ["Analyzing…", "Designing entities…", "Mapping relationships…", "Writing SQL…"];
 
@@ -99,6 +100,33 @@ export default function ProjectDetailPage({ onNavigate }: { onNavigate: (p: stri
           versions: [{ sql: data.sql, generatedAt: Date.now() }],
         });
         incrementConversions();
+        // ── Upload image to DB + save conversion with image_id ──
+        const numericUserId = parseInt(user?.id ?? "", 10);
+        if (!isNaN(numericUserId)) {
+          const { apiUploadImage, apiSaveConversion, apiUpsertProjectImage } = await import("@/lib/api");
+          // Upload image to images table (Quick Convert flow)
+          const imageFile = new File([blob], file.name, { type: blob.type || "image/png" });
+          let imageId: number | undefined;
+          try {
+            const uploaded = await apiUploadImage(numericUserId, imageFile);
+            imageId = uploaded.image_id;
+          } catch { /* non-fatal */ }
+          // Save conversion
+          apiSaveConversion({
+            user_id: numericUserId, image_id: imageId, generated_ddl: data.sql,
+            dialect: project.dbType, success: true,
+            tables_count: tables, relationships_count: fks,
+            execution_time_ms: pt, tool: "quick_convert",
+          }).catch(() => {});
+          // Update project_images table with SQL result
+          apiUpsertProjectImage({
+            image_uid: fileId, user_id: numericUserId, project_uid: project.id,
+            original_filename: file.name, status: "completed",
+            generated_sql: data.sql, tables_count: tables,
+            relationships_count: fks, processing_time_ms: pt,
+            completed_at: Date.now(),
+          }).catch(() => {});
+        }
         toast.success(`✓ ${file.name} processed`);
       } catch (err: any) {
         updateFileStatus(project.id, ownerId, fileId, { status: "failed", error: err.message });
@@ -109,7 +137,7 @@ export default function ProjectDetailPage({ onNavigate }: { onNavigate: (p: stri
     syncToDb();  // ← persist all file updates to PostgreSQL
   }, [project, processing, updateFileStatus, syncToDb]);
 
-  const onDrop = useCallback((accepted: File[]) => {
+  const onDrop = useCallback(async (accepted: File[]) => {
     if (!project) return;
     const subscription = getSubscription();
     const available = Math.max(0, getPlan(subscription).maxImagesPerProject - project.files.length);
@@ -121,13 +149,45 @@ export default function ProjectDetailPage({ onNavigate }: { onNavigate: (p: stri
     if (capacity < accepted.length) {
       setLimitOpen(true);
     }
-    const newFiles: ProjectFile[] = accepted.slice(0, capacity).map(f => ({
-      id: genId(), name: f.name,
-      imageUrl: URL.createObjectURL(f),
-      status: "waiting" as const,
-      uploadedAt: Date.now(),
-    }));
+
+    // Convert each file to base64 data URL so it persists in PostgreSQL
+    const toBase64 = (file: File): Promise<string> =>
+      new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+    const newFiles: ProjectFile[] = await Promise.all(
+      accepted.slice(0, capacity).map(async (f) => ({
+        id: genId(),
+        name: f.name,
+        imageUrl: await toBase64(f),   // ← base64 data URL, survives page reload
+        status: "waiting" as const,
+        uploadedAt: Date.now(),
+      }))
+    );
+
     newFiles.forEach(f => upsertFile(project.id, ownerId, f));
+
+    // ── Persist each image to project_images table in PostgreSQL ──────────
+    const numericUserId = parseInt(user?.id ?? "", 10);
+    if (!isNaN(numericUserId)) {
+      const { apiUpsertProjectImage } = await import("@/lib/api");
+      newFiles.forEach(f => {
+        const base64Data = f.imageUrl?.startsWith("data:") ? f.imageUrl : undefined;
+        const mimeMatch  = base64Data?.match(/^data:(.*?);base64,/);
+        const mimeType   = mimeMatch?.[1] ?? "image/png";
+        const byteLen    = base64Data ? Math.round((base64Data.length * 3) / 4) : undefined;
+        apiUpsertProjectImage({
+          image_uid: f.id, user_id: numericUserId, project_uid: project.id,
+          original_filename: f.name, mime_type: mimeType, file_size_bytes: byteLen,
+          image_data: base64Data, status: "waiting",
+        }).catch(() => {});
+      });
+    }
+
     toast.success(`${newFiles.length} file${newFiles.length > 1 ? "s" : ""} added to queue`);
     // Auto-process after a short delay
     setTimeout(() => {
@@ -135,7 +195,7 @@ export default function ProjectDetailPage({ onNavigate }: { onNavigate: (p: stri
       const updatedProject = state.projects.find(p => p.id === project.id);
       if (updatedProject) processQueue();
     }, 300);
-  }, [project, upsertFile, processQueue, getSubscription]);
+  }, [project, upsertFile, processQueue, getSubscription, ownerId]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop, accept: { "image/png": [".png"], "image/jpeg": [".jpg", ".jpeg"], "image/webp": [".webp"] },
@@ -201,6 +261,17 @@ export default function ProjectDetailPage({ onNavigate }: { onNavigate: (p: stri
         stats: { tables, relationships: fks, attributes: cols },
       });
       incrementConversions();
+      // ── Save to conversions table in DB ──
+      const numericUid = parseInt(user?.id ?? "", 10);
+      if (!isNaN(numericUid)) {
+        const { apiSaveConversion } = await import("@/lib/api");
+        apiSaveConversion({
+          user_id: numericUid, generated_ddl: data.sql,
+          dialect: project.dbType, success: true,
+          tables_count: tables, relationships_count: fks,
+          execution_time_ms: Date.now() - t0, tool: "generate",
+        }).catch(() => {});
+      }
       setGenStatus("done");
       syncToDb();  // ← save to PostgreSQL
       toast.success("Schema generated and saved to project!");
@@ -213,6 +284,62 @@ export default function ProjectDetailPage({ onNavigate }: { onNavigate: (p: stri
     }
   }, [project, genDesc, getSubscription, upsertFile, ownerId, incrementConversions]);
 
+  // ── Export project as ZIP (Pro only) ──────────────────────────────────────
+  const exportZip = useCallback(async () => {
+    if (!project) return;
+    setZipping(true);
+    try {
+      const JSZip = (await import("jszip")).default;
+      const zip = new JSZip();
+      const sqlFolder  = zip.folder("sql")!;
+      const txtFolder  = zip.folder("txt")!;
+      const jsonFolder = zip.folder("json")!;
+
+      project.files.forEach(f => {
+        const base = f.name.replace(/\.[^.]+$/, "");
+        if (f.sql) {
+          sqlFolder.file(`${base}.sql`, f.sql);
+          txtFolder.file(`${base}.txt`, f.sql);
+          jsonFolder.file(`${base}.json`, JSON.stringify({
+            filename: f.name,
+            sql: f.sql,
+            stats: f.stats ?? null,
+            generatedAt: f.completedAt ?? null,
+            project: project.name,
+            dbType: project.dbType,
+          }, null, 2));
+        }
+      });
+
+      // Add a project manifest
+      zip.file("manifest.json", JSON.stringify({
+        project: project.name,
+        description: project.description || "",
+        dbType: project.dbType,
+        exportedAt: new Date().toISOString(),
+        files: project.files.map(f => ({
+          name: f.name,
+          status: f.status,
+          tables: f.stats?.tables ?? 0,
+          relationships: f.stats?.relationships ?? 0,
+        })),
+      }, null, 2));
+
+      const blob = await zip.generateAsync({ type: "blob" });
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement("a");
+      a.href     = url;
+      a.download = `${project.name.replace(/\s+/g, "_")}_export.zip`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("Project exported as ZIP!");
+    } catch (err: any) {
+      toast.error("ZIP export failed: " + err.message);
+    } finally {
+      setZipping(false);
+    }
+  }, [project]);
+
   if (!project) return (
     <div className="flex flex-col items-center justify-center h-64 gap-3">
       <p className="text-[var(--text-muted)]">Project not found.</p>
@@ -223,17 +350,55 @@ export default function ProjectDetailPage({ onNavigate }: { onNavigate: (p: stri
   const imageFiles = project.files;
   const sqlFiles   = project.files.filter(f => f.sql);
   const folderFiles = activeFolder === "images" ? imageFiles : activeFolder === "sql" ? sqlFiles : sqlFiles;
+  const sub    = getSubscription();
+  const isPro  = sub.planId === "pro";
+  const hasSql = sqlFiles.length > 0;
 
   return (
     <div>
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-[var(--text-muted)] mb-6">
-        <button onClick={() => onNavigate("projects")} className="hover:text-[var(--text)] transition-colors flex items-center gap-1">
-          <ArrowLeft size={14}/> Projects
-        </button>
-        <ChevronRight size={13}/>
-        <span className="font-semibold text-[var(--text)]">{project.name}</span>
-        <span className="badge badge-emerald text-[10px] ml-1">{project.dbType}</span>
+      {/* Breadcrumb + ZIP export */}
+      <div className="flex items-center justify-between gap-2 mb-6">
+        <div className="flex items-center gap-2 text-sm text-[var(--text-muted)]">
+          <button onClick={() => onNavigate("projects")} className="hover:text-[var(--text)] transition-colors flex items-center gap-1">
+            <ArrowLeft size={14}/> Projects
+          </button>
+          <ChevronRight size={13}/>
+          <span className="font-semibold text-[var(--text)]">{project.name}</span>
+          <span className="badge badge-emerald text-[10px] ml-1">{project.dbType}</span>
+        </div>
+
+        {/* ZIP Export button — Pro only */}
+        {isPro ? (
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.97 }}
+            onClick={exportZip}
+            disabled={zipping || !hasSql}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold
+              bg-[var(--card)] border border-[var(--border)] text-[var(--text)]
+              hover:border-[var(--primary)] hover:text-[var(--primary)] transition-all
+              disabled:opacity-50 disabled:cursor-not-allowed"
+            title={!hasSql ? "No SQL files to export" : "Export project as ZIP"}
+          >
+            {zipping ? (
+              <><Loader2 size={14} className="animate-spin" /> Exporting…</>
+            ) : (
+              <><Archive size={14} /> Export ZIP</>
+            )}
+          </motion.button>
+        ) : (
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            onClick={() => onNavigate("pricing")}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold
+              bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30
+              text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-500/20 transition-all"
+            title="Upgrade to Pro to export as ZIP"
+          >
+            <Lock size={13} /> Export ZIP
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-200 dark:bg-amber-500/30 text-amber-700 dark:text-amber-300 ml-0.5">PRO</span>
+          </motion.button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-[280px_1fr] gap-5">

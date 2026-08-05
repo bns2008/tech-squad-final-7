@@ -36,54 +36,54 @@ const DIAGRAM_TYPES = [
     label: "ER Diagram",
     icon: Table2,
     desc: "Entity-relationship diagram with tables & foreign keys",
-    color: "text-primary-600",
-    bg: "bg-primary-50 dark:bg-primary-900/20",
-    border: "border-primary-400",
+    color: "text-[var(--text)]",
+    bg: "bg-[var(--card)]",
+    border: "border-[var(--text-subtle)]",
   },
   {
     value: "flowchart",
     label: "Flowchart",
     icon: GitFork,
     desc: "Process flow with decisions and steps",
-    color: "text-emerald-600",
-    bg: "bg-emerald-50 dark:bg-emerald-900/20",
-    border: "border-emerald-400",
+    color: "text-[var(--text)]",
+    bg: "bg-[var(--card)]",
+    border: "border-[var(--text-subtle)]",
   },
   {
     value: "dfd0",
     label: "DFD Level 0",
     icon: Share2,
     desc: "Context diagram — system vs external entities",
-    color: "text-orange-600",
-    bg: "bg-orange-50 dark:bg-orange-900/20",
-    border: "border-orange-400",
+    color: "text-[var(--text)]",
+    bg: "bg-[var(--card)]",
+    border: "border-[var(--text-subtle)]",
   },
   {
     value: "dfd1",
     label: "DFD Level 1",
     icon: Layers,
     desc: "Decomposed processes, data stores & flows",
-    color: "text-emerald-600",
-    bg: "bg-emerald-50 dark:bg-emerald-900/20",
-    border: "border-emerald-400",
+    color: "text-[var(--text)]",
+    bg: "bg-[var(--card)]",
+    border: "border-[var(--text-subtle)]",
   },
   {
     value: "class",
     label: "Class Diagram",
     icon: GitBranch,
     desc: "OOP classes with attributes, methods & relationships",
-    color: "text-sky-600",
-    bg: "bg-sky-50 dark:bg-sky-900/20",
-    border: "border-sky-400",
+    color: "text-[var(--text)]",
+    bg: "bg-[var(--card)]",
+    border: "border-[var(--text-subtle)]",
   },
 ];
 
 const DB_OPTIONS = [
-  { value: "postgresql", label: "PostgreSQL", short: "PG",  color: "text-blue-500",   border: "border-blue-400",   bg: "bg-blue-50 dark:bg-blue-900/20"    },
-  { value: "mysql",      label: "MySQL",      short: "MY",  color: "text-orange-500", border: "border-orange-400", bg: "bg-orange-50 dark:bg-orange-900/20" },
-  { value: "sqlite",     label: "SQLite",     short: "SL",  color: "text-sky-500",    border: "border-sky-400",    bg: "bg-sky-50 dark:bg-sky-900/20"       },
-  { value: "mssql",      label: "SQL Server", short: "SS",  color: "text-red-500",    border: "border-red-400",    bg: "bg-red-50 dark:bg-red-900/20"       },
-  { value: "oracle",     label: "Oracle",     short: "ORA", color: "text-amber-500",  border: "border-amber-400",  bg: "bg-amber-50 dark:bg-amber-900/20"   },
+  { value: "postgresql", label: "PostgreSQL", short: "PG",  color: "text-[var(--text)]", border: "border-[var(--text-subtle)]", bg: "bg-[var(--card)]" },
+  { value: "mysql",      label: "MySQL",      short: "MY",  color: "text-[var(--text)]", border: "border-[var(--text-subtle)]", bg: "bg-[var(--card)]" },
+  { value: "sqlite",     label: "SQLite",     short: "SL",  color: "text-[var(--text)]", border: "border-[var(--text-subtle)]", bg: "bg-[var(--card)]" },
+  { value: "mssql",      label: "SQL Server", short: "SS",  color: "text-[var(--text)]", border: "border-[var(--text-subtle)]", bg: "bg-[var(--card)]" },
+  { value: "oracle",     label: "Oracle",     short: "ORA", color: "text-[var(--text)]", border: "border-[var(--text-subtle)]", bg: "bg-[var(--card)]" },
 ];
 
 const EXAMPLE_PROMPTS = [
@@ -320,7 +320,7 @@ export default function GeneratePage({ onNavigate }: { onNavigate: (p: string) =
       // ── Save to tool history ──
       const numericId = parseInt(user?.id ?? "", 10);
       if (!isNaN(numericId)) {
-        const { apiSaveToolHistory } = await import("@/lib/api");
+        const { apiSaveToolHistory, apiSaveConversion } = await import("@/lib/api");
         apiSaveToolHistory({
           user_id: numericId,
           tool: "generate",
@@ -332,6 +332,17 @@ export default function GeneratePage({ onNavigate }: { onNavigate: (p: string) =
           processing_time_ms: generated.processingTime,
           success: true,
           extra_json: { diagramType, relationships: fks, description: description.trim().slice(0, 200) },
+        }).catch(() => {});
+        // ── Save to conversions table in DB ──
+        apiSaveConversion({
+          user_id: numericId,
+          generated_ddl: data.sql,
+          dialect: selectedDb,
+          success: true,
+          tables_count: tables,
+          relationships_count: fks,
+          execution_time_ms: generated.processingTime,
+          tool: "generate",
         }).catch(() => {});
       }
       toast.success("Schema generated!");

@@ -13,7 +13,7 @@ import base64
 import os
 
 from database import get_db
-from models import User, Image, Conversion, ApiUsage, ExportLog, UserActivity
+from models import User, Image, Conversion, ApiUsage, ExportLog, UserActivity, ProjectImage
 from utils.activity_logger import log_activity
 from utils.file_storage import save_uploaded_image
 
@@ -327,7 +327,7 @@ async def upload_image(request: Request, user_id: int = Form(...),
 @app.post("/save-conversion")
 def save_conversion(payload: dict, request: Request, db: Session = Depends(get_db)):
     user_id       = payload.get("user_id")
-    image_id      = payload.get("image_id")
+    image_id      = payload.get("image_id")          # optional — None for text-based tools
     generated_ddl = payload.get("generated_ddl", "")
     dialect       = payload.get("dialect", "postgresql")
     success       = payload.get("success", True)
@@ -335,20 +335,24 @@ def save_conversion(payload: dict, request: Request, db: Session = Depends(get_d
     exec_time     = payload.get("execution_time_ms")
     tables_count  = payload.get("tables_count", 0)
     rels_count    = payload.get("relationships_count", 0)
+    tool          = payload.get("tool", "quick_convert")  # quick_convert | generate | migrate
 
-    if not user_id or not image_id:
-        raise HTTPException(status_code=400, detail="user_id and image_id required")
+    if not user_id:
+        raise HTTPException(status_code=400, detail="user_id is required")
 
-    db_image = db.query(Image).filter(Image.id == image_id).first()
-    if db_image:
-        db_image.is_processed      = success
-        db_image.processing_status = "completed" if success else "failed"
-        db.commit()
+    if image_id:
+        db_image = db.query(Image).filter(Image.id == image_id).first()
+        if db_image:
+            db_image.is_processed      = success
+            db_image.processing_status = "completed" if success else "failed"
+            db.commit()
 
-    conv = Conversion(user_id=user_id, image_id=image_id, generated_ddl=generated_ddl,
-                      dialect=dialect, success=success, error_message=error_message,
-                      execution_time_ms=exec_time, tables_count=tables_count,
-                      relationships_count=rels_count)
+    conv = Conversion(
+        user_id=user_id, image_id=image_id if image_id else None,
+        generated_ddl=generated_ddl, dialect=dialect, success=success,
+        error_message=error_message, execution_time_ms=exec_time,
+        tables_count=tables_count, relationships_count=rels_count,
+    )
     db.add(conv)
 
     user = db.query(User).filter(User.id == user_id).first()
@@ -358,10 +362,11 @@ def save_conversion(payload: dict, request: Request, db: Session = Depends(get_d
     db.refresh(conv)
 
     log_activity(db, "convert", user_id=user_id,
-                 description=f"Generated {dialect.upper()} DDL", ip_address=get_ip(request),
-                 metadata={"conversion_id": conv.id, "dialect": dialect, "tables": tables_count})
+                 description=f"{tool} → {dialect.upper()} DDL", ip_address=get_ip(request),
+                 metadata={"conversion_id": conv.id, "dialect": dialect,
+                           "tables": tables_count, "tool": tool})
 
-    api_log = ApiUsage(user_id=user_id, endpoint="/api/analyze",
+    api_log = ApiUsage(user_id=user_id, endpoint=f"/api/{tool.replace('_','-')}",
                        model_used="mistral-small-latest",
                        processing_time_ms=exec_time, success=success)
     db.add(api_log)
@@ -608,10 +613,268 @@ def user_activity_log(user_id: int, db: Session = Depends(get_db)):
              "description": a.description, "timestamp": str(a.timestamp)} for a in logs]
 
 
-# ── All users (admin) ─────────────────────────────────────────────────────────
-@app.get("/users")
-def list_users(db: Session = Depends(get_db)):
-    return [_user_dict(u) for u in db.query(User).all()]
+# ── Project Images: upsert (save/update) ─────────────────────────────────────
+@app.post("/project-images")
+def upsert_project_image(payload: dict, db: Session = Depends(get_db)):
+    from models import ProjectImage
+    image_uid    = payload.get("image_uid")
+    user_id      = payload.get("user_id")
+    project_uid  = payload.get("project_uid")
+    filename     = payload.get("original_filename", "")
+    mime_type    = payload.get("mime_type")
+    file_size    = payload.get("file_size_bytes")
+    image_data   = payload.get("image_data")        # base64 data URL
+    status       = payload.get("status", "waiting")
+    sql          = payload.get("generated_sql")
+    tables       = payload.get("tables_count", 0)
+    rels         = payload.get("relationships_count", 0)
+    proc_time    = payload.get("processing_time_ms")
+    completed_at = payload.get("completed_at")
+
+    if not image_uid or not user_id or not project_uid:
+        raise HTTPException(status_code=400, detail="image_uid, user_id and project_uid are required")
+
+    existing = db.query(ProjectImage).filter(ProjectImage.image_uid == image_uid).first()
+    if existing:
+        existing.status               = status
+        existing.generated_sql        = sql
+        existing.tables_count         = tables
+        existing.relationships_count  = rels
+        existing.processing_time_ms   = proc_time
+        if image_data: existing.image_data = image_data
+        if completed_at:
+            existing.completed_at = datetime.datetime.utcfromtimestamp(completed_at / 1000)
+        db.commit()
+        return {"message": "Updated", "id": existing.id}
+    else:
+        img = ProjectImage(
+            image_uid=image_uid, user_id=user_id, project_uid=project_uid,
+            original_filename=filename, mime_type=mime_type,
+            file_size_bytes=file_size, image_data=image_data,
+            status=status, generated_sql=sql,
+            tables_count=tables, relationships_count=rels,
+            processing_time_ms=proc_time,
+            completed_at=datetime.datetime.utcfromtimestamp(completed_at / 1000) if completed_at else None,
+        )
+        db.add(img)
+        db.commit()
+        db.refresh(img)
+        return {"message": "Saved", "id": img.id}
+
+
+# ── Project Images: get all for a project ────────────────────────────────────
+@app.get("/project-images/{project_uid}")
+def get_project_images(project_uid: str, db: Session = Depends(get_db)):
+    from models import ProjectImage
+    imgs = db.query(ProjectImage).filter(
+        ProjectImage.project_uid == project_uid
+    ).order_by(ProjectImage.uploaded_at.asc()).all()
+    return [_project_image_dict(i) for i in imgs]
+
+
+# ── Project Images: delete one ────────────────────────────────────────────────
+@app.delete("/project-images/{image_uid}")
+def delete_project_image(image_uid: str, db: Session = Depends(get_db)):
+    from models import ProjectImage
+    img = db.query(ProjectImage).filter(ProjectImage.image_uid == image_uid).first()
+    if img:
+        db.delete(img)
+        db.commit()
+    return {"message": "Deleted"}
+
+
+def _project_image_dict(i) -> dict:
+    return {
+        "id":                   i.id,
+        "image_uid":            i.image_uid,
+        "user_id":              i.user_id,
+        "project_uid":          i.project_uid,
+        "original_filename":    i.original_filename,
+        "mime_type":            i.mime_type,
+        "file_size_bytes":      i.file_size_bytes,
+        "image_data":           i.image_data,
+        "status":               i.status,
+        "generated_sql":        i.generated_sql,
+        "tables_count":         i.tables_count,
+        "relationships_count":  i.relationships_count,
+        "processing_time_ms":   i.processing_time_ms,
+        "uploaded_at":          str(i.uploaded_at),
+        "completed_at":         str(i.completed_at) if i.completed_at else None,
+    }
+
+
+
+@app.get("/admin/users")
+def admin_list_users(db: Session = Depends(get_db)):
+    from models import Project as ProjectModel, Conversion as ConversionModel
+    users = db.query(User).order_by(User.created_at.desc()).all()
+    result = []
+    for u in users:
+        project_count = db.query(ProjectModel).filter(ProjectModel.user_id == u.id).count()
+        conversion_count = db.query(ConversionModel).filter(ConversionModel.user_id == u.id).count()
+        d = _user_dict(u)
+        d["project_count"] = project_count
+        d["conversion_count"] = conversion_count
+        result.append(d)
+    return result
+
+
+# ── Admin: suspend / reactivate user ─────────────────────────────────────────
+@app.put("/admin/users/{user_id}/suspend")
+def admin_suspend_user(user_id: int, payload: dict, request: Request, db: Session = Depends(get_db)):
+    suspend = payload.get("suspend", True)
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    user.is_active = not suspend
+    db.commit()
+    action = "suspended" if suspend else "reactivated"
+    log_activity(db, f"admin_{action}", user_id=user_id,
+                 description=f"Admin {action} user {user.email}",
+                 ip_address=get_ip(request))
+    return {"message": f"User {action}", "user": _user_dict(user)}
+
+
+# ── Admin: change user plan ───────────────────────────────────────────────────
+@app.put("/admin/users/{user_id}/plan")
+def admin_change_plan(user_id: int, payload: dict, request: Request, db: Session = Depends(get_db)):
+    plan = payload.get("plan", "free")
+    if plan not in ("free", "pro"):
+        raise HTTPException(status_code=400, detail="plan must be 'free' or 'pro'")
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    user.plan = plan
+    db.commit()
+    log_activity(db, "admin_plan_change", user_id=user_id,
+                 description=f"Admin changed plan to {plan}",
+                 ip_address=get_ip(request))
+    return {"message": f"Plan updated to {plan}", "user": _user_dict(user)}
+
+
+# ── Admin: reset monthly conversions for a user ───────────────────────────────
+@app.put("/admin/users/{user_id}/reset-conversions")
+def admin_reset_conversions(user_id: int, request: Request, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    user.conversions_used_this_month = 0
+    db.commit()
+    log_activity(db, "admin_reset_conversions", user_id=user_id,
+                 description="Admin reset monthly conversions",
+                 ip_address=get_ip(request))
+    return {"message": "Conversions reset", "user": _user_dict(user)}
+
+
+# ── Admin: change user role ───────────────────────────────────────────────────
+@app.put("/admin/users/{user_id}/role")
+def admin_change_role(user_id: int, payload: dict, request: Request, db: Session = Depends(get_db)):
+    role = payload.get("role", "user")
+    if role not in ("user", "admin"):
+        raise HTTPException(status_code=400, detail="role must be 'user' or 'admin'")
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    user.role = role
+    db.commit()
+    log_activity(db, "admin_role_change", user_id=user_id,
+                 description=f"Admin changed role to {role}",
+                 ip_address=get_ip(request))
+    return {"message": f"Role updated to {role}", "user": _user_dict(user)}
+
+
+# ── Admin: delete user and all their data ─────────────────────────────────────
+@app.delete("/admin/users/{user_id}")
+def admin_delete_user(user_id: int, request: Request, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    email = user.email
+    db.delete(user)
+    db.commit()
+    log_activity(db, "admin_delete_user", description=f"Admin deleted user {email}",
+                 ip_address=get_ip(request))
+    return {"message": f"User {email} deleted"}
+
+
+# ── Admin: platform stats ─────────────────────────────────────────────────────
+@app.get("/admin/stats")
+def admin_stats(db: Session = Depends(get_db)):
+    from models import Project as ProjectModel, Conversion as ConversionModel
+    total_users       = db.query(User).count()
+    active_users      = db.query(User).filter(User.is_active == True).count()
+    suspended_users   = db.query(User).filter(User.is_active == False).count()
+    pro_users         = db.query(User).filter(User.plan == "pro").count()
+    free_users        = db.query(User).filter(User.plan == "free").count()
+    total_projects    = db.query(ProjectModel).count()
+    total_conversions = db.query(ConversionModel).count()
+    successful_conv   = db.query(ConversionModel).filter(ConversionModel.success == True).count()
+    failed_conv       = db.query(ConversionModel).filter(ConversionModel.success == False).count()
+    # Active in last 30 days
+    cutoff = datetime.datetime.utcnow() - datetime.timedelta(days=30)
+    recently_active = db.query(User).filter(User.last_login >= cutoff).count()
+    return {
+        "total_users": total_users,
+        "active_users": active_users,
+        "suspended_users": suspended_users,
+        "pro_users": pro_users,
+        "free_users": free_users,
+        "total_projects": total_projects,
+        "total_conversions": total_conversions,
+        "successful_conversions": successful_conv,
+        "failed_conversions": failed_conv,
+        "recently_active_users": recently_active,
+    }
+
+
+# ── Admin: get all project images for a user ──────────────────────────────────
+@app.get("/admin/users/{user_id}/project-images")
+def admin_get_user_project_images(user_id: int, db: Session = Depends(get_db)):
+    from models import ProjectImage, Project as ProjectModel
+    imgs = (
+        db.query(ProjectImage, ProjectModel.name.label("project_name"))
+        .join(ProjectModel, ProjectModel.project_uid == ProjectImage.project_uid)
+        .filter(ProjectImage.user_id == user_id)
+        .order_by(ProjectImage.uploaded_at.desc())
+        .all()
+    )
+    return [
+        {
+            "id":                  img.ProjectImage.id,
+            "image_uid":           img.ProjectImage.image_uid,
+            "original_filename":   img.ProjectImage.original_filename,
+            "project_name":        img.project_name,
+            "project_uid":         img.ProjectImage.project_uid,
+            "status":              img.ProjectImage.status,
+            "tables_count":        img.ProjectImage.tables_count,
+            "relationships_count": img.ProjectImage.relationships_count,
+            "processing_time_ms":  img.ProjectImage.processing_time_ms,
+            "generated_sql":       img.ProjectImage.generated_sql,
+            "uploaded_at":         str(img.ProjectImage.uploaded_at),
+            "completed_at":        str(img.ProjectImage.completed_at) if img.ProjectImage.completed_at else None,
+        }
+        for img in imgs
+    ]
+
+
+@app.get("/admin/users/{user_id}/projects")
+def admin_get_user_projects(user_id: int, db: Session = Depends(get_db)):
+    from models import Project as ProjectModel
+    projects = db.query(ProjectModel).filter(ProjectModel.user_id == user_id).all()
+    return [_project_dict(p) for p in projects]
+
+
+# ── Admin: delete a project ───────────────────────────────────────────────────
+@app.delete("/admin/projects/{project_uid}")
+def admin_delete_project(project_uid: str, request: Request, db: Session = Depends(get_db)):
+    from models import Project as ProjectModel
+    proj = db.query(ProjectModel).filter(ProjectModel.project_uid == project_uid).first()
+    if proj:
+        db.delete(proj)
+        db.commit()
+    return {"message": "Project deleted"}
+
+
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────

@@ -89,7 +89,7 @@ class Conversion(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    image_id: Mapped[int] = mapped_column(Integer, ForeignKey("images.id", ondelete="CASCADE"), nullable=False)
+    image_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("images.id", ondelete="SET NULL"), nullable=True)
     generated_ddl: Mapped[Optional[str]] = mapped_column(Text, nullable=True)     # the actual SQL script
     dialect: Mapped[str] = mapped_column(String(30), default="postgresql", nullable=False)
     conversion_timestamp: Mapped[datetime.datetime] = mapped_column(DateTime, server_default=func.now(), nullable=False)
@@ -101,7 +101,7 @@ class Conversion(Base):
 
     # Relationships
     user: Mapped["User"] = relationship("User", back_populates="conversions")
-    image: Mapped["Image"] = relationship("Image", back_populates="conversions")
+    image: Mapped[Optional["Image"]] = relationship("Image", back_populates="conversions")
     export_logs: Mapped[List["ExportLog"]] = relationship("ExportLog", back_populates="conversion", cascade="all, delete-orphan")
 
 
@@ -276,3 +276,40 @@ class ToolHistory(Base):
 
     # Relationship
     user: Mapped["User"] = relationship("User")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# TABLE 11: project_images
+# ER diagram images uploaded inside a project workspace.
+# Stores image as base64 data URL so it survives page reloads.
+# Visible in pgAdmin:
+#   SELECT pi.id, u.full_name, pr.name AS project, pi.original_filename,
+#          pi.status, pi.uploaded_at
+#   FROM project_images pi
+#   JOIN users u    ON pi.user_id    = u.id
+#   JOIN projects p ON pi.project_uid = p.project_uid
+#   ORDER BY pi.uploaded_at DESC;
+# ─────────────────────────────────────────────────────────────────────────────
+class ProjectImage(Base):
+    __tablename__ = "project_images"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    image_uid: Mapped[str] = mapped_column(String(100), unique=True, nullable=False, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    project_uid: Mapped[str] = mapped_column(String(100), ForeignKey("projects.project_uid", ondelete="CASCADE"), nullable=False, index=True)
+    original_filename: Mapped[str] = mapped_column(String(255), nullable=False)
+    mime_type: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    file_size_bytes: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    image_data: Mapped[Optional[str]] = mapped_column(Text, nullable=True)        # base64 data URL
+    status: Mapped[str] = mapped_column(String(30), default="waiting", nullable=False)
+    # 'waiting' | 'processing' | 'completed' | 'failed'
+    generated_sql: Mapped[Optional[str]] = mapped_column(Text, nullable=True)     # SQL produced from this image
+    tables_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    relationships_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    processing_time_ms: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    uploaded_at: Mapped[datetime.datetime] = mapped_column(DateTime, server_default=func.now(), nullable=False, index=True)
+    completed_at: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime, nullable=True)
+
+    # Relationships
+    user: Mapped["User"] = relationship("User")
+    project: Mapped["Project"] = relationship("Project")

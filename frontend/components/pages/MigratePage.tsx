@@ -27,11 +27,11 @@ const MonacoEditor = dynamic(
 );
 
 const DB_OPTIONS = [
-  { value: "postgresql", label: "PostgreSQL", short: "PG",  color: "text-blue-500",   border: "border-blue-400",   bg: "bg-blue-50 dark:bg-blue-900/20"    },
-  { value: "mysql",      label: "MySQL",      short: "MY",  color: "text-orange-500", border: "border-orange-400", bg: "bg-orange-50 dark:bg-orange-900/20" },
-  { value: "sqlite",     label: "SQLite",     short: "SL",  color: "text-sky-500",    border: "border-sky-400",    bg: "bg-sky-50 dark:bg-sky-900/20"       },
-  { value: "mssql",      label: "SQL Server", short: "SS",  color: "text-red-500",    border: "border-red-400",    bg: "bg-red-50 dark:bg-red-900/20"       },
-  { value: "oracle",     label: "Oracle",     short: "ORA", color: "text-amber-500",  border: "border-amber-400",  bg: "bg-amber-50 dark:bg-amber-900/20"   },
+  { value: "postgresql", label: "PostgreSQL", short: "PG",  color: "text-[var(--text)]", border: "border-[var(--text-subtle)]", bg: "bg-[var(--card)]" },
+  { value: "mysql",      label: "MySQL",      short: "MY",  color: "text-[var(--text)]", border: "border-[var(--text-subtle)]", bg: "bg-[var(--card)]" },
+  { value: "sqlite",     label: "SQLite",     short: "SL",  color: "text-[var(--text)]", border: "border-[var(--text-subtle)]", bg: "bg-[var(--card)]" },
+  { value: "mssql",      label: "SQL Server", short: "SS",  color: "text-[var(--text)]", border: "border-[var(--text-subtle)]", bg: "bg-[var(--card)]" },
+  { value: "oracle",     label: "Oracle",     short: "ORA", color: "text-[var(--text)]", border: "border-[var(--text-subtle)]", bg: "bg-[var(--card)]" },
 ];
 
 const PROCESS_STEPS = [
@@ -249,7 +249,7 @@ export default function MigratePage({ onNavigate }: { onNavigate: (p: string) =>
       // ── Save to tool history ──
       const numericId = parseInt(useStore.getState().user?.id ?? "", 10);
       if (!isNaN(numericId)) {
-        const { apiSaveToolHistory } = await import("@/lib/api");
+        const { apiSaveToolHistory, apiSaveConversion } = await import("@/lib/api");
         apiSaveToolHistory({
           user_id: numericId,
           tool: "migrate",
@@ -261,6 +261,16 @@ export default function MigratePage({ onNavigate }: { onNavigate: (p: string) =>
           processing_time_ms: Date.now() - t0,
           success: true,
           extra_json: { original_lines: data.originalLines, converted_lines: data.convertedLines },
+        }).catch(() => {});
+        // ── Save to conversions table in DB ──
+        apiSaveConversion({
+          user_id: numericId,
+          generated_ddl: data.sql,
+          dialect: targetDialect,
+          success: true,
+          tables_count: tables,
+          execution_time_ms: Date.now() - t0,
+          tool: "migrate",
         }).catch(() => {});
       }
       toast.success("Migration complete!");
@@ -320,15 +330,15 @@ export default function MigratePage({ onNavigate }: { onNavigate: (p: string) =>
           {/* Swap button */}
           <div className="flex items-center justify-center pt-8 md:pt-7">
             <motion.button
-              whileHover={{ scale: 1.1, rotate: 180 }}
-              whileTap={{ scale: 0.95 }}
-              transition={{ duration: 0.3 }}
+              whileHover={{ scale: 1.08, rotate: 180 }}
+              whileTap={{ scale: 0.93 }}
+              transition={{ duration: 0.35, ease: "easeInOut" }}
               onClick={swap}
               title="Swap source and target"
-              className="w-10 h-10 rounded-full border-2 border-[var(--border)] bg-[var(--surface)]
+              className="w-10 h-10 rounded-full border border-[var(--border)] bg-[var(--card)]
                 flex items-center justify-center text-[var(--text-muted)]
-                hover:border-primary-500 hover:text-primary-600 hover:bg-primary-50
-                dark:hover:bg-primary-900/20 transition-all"
+                hover:border-[var(--text-subtle)] hover:text-[var(--text)] hover:bg-[var(--surface)]
+                transition-colors shadow-sm"
             >
               <ArrowRightLeft size={16} />
             </motion.button>
