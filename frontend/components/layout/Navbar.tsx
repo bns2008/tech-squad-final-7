@@ -7,13 +7,14 @@ import { initials, cn } from "@/lib/utils";
 import { getPlan } from "@/lib/subscription";
 import GlobalSearch from "@/components/GlobalSearch";
 
-interface NavbarProps { onNavigate: (p: string) => void; }
+interface NavbarProps { onNavigate: (p: string) => void; page?: string; }
 
-export default function Navbar({ onNavigate }: NavbarProps) {
+export default function Navbar({ onNavigate, page }: NavbarProps) {
+  const isAdminPage = page === "admin";
   const { theme, setTheme, user, sidebarCollapsed, getSubscription, projects: allProjects } = useStore();
   const sub  = getSubscription();
   const plan = getPlan(sub);
-  const ml   = sidebarCollapsed ? 64 : 220;
+  const ml   = sidebarCollapsed ? 72 : 248;
 
   const [popupOpen,  setPopupOpen]  = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -58,11 +59,13 @@ export default function Navbar({ onNavigate }: NavbarProps) {
 
         <div className="ml-auto flex items-center gap-2">
           {/* Notifications */}
-          <button className="relative w-8 h-8 rounded-xl flex items-center justify-center
-            text-[var(--text-muted)] hover:bg-[var(--surface)] transition-colors">
-            <Bell size={15} />
-            <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-primary-500" />
-          </button>
+          {!isAdminPage && (
+            <button className="relative w-8 h-8 rounded-xl flex items-center justify-center
+              text-[var(--text-muted)] hover:bg-[var(--surface)] transition-colors">
+              <Bell size={15} />
+              <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-primary-500" />
+            </button>
+          )}
 
           {/* Theme */}
           <motion.button whileTap={{ scale: 0.9 }}
@@ -73,19 +76,21 @@ export default function Navbar({ onNavigate }: NavbarProps) {
           </motion.button>
 
           {/* Avatar — toggles popup */}
-          <button
-            onClick={() => setPopupOpen((v) => !v)}
-            className={cn(
-              "relative z-50 w-8 h-8 rounded-full overflow-hidden bg-primary-100 dark:bg-primary-900/40",
-              "flex items-center justify-center text-xs font-bold text-primary-600",
-              "cursor-pointer hover:ring-2 hover:ring-primary-500/50 transition-all flex-shrink-0",
-              popupOpen && "ring-2 ring-primary-500/60"
-            )}
-          >
-            {user?.avatar
-              ? <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
-              : (user ? initials(user.name) : "?")}
-          </button>
+          {!isAdminPage && (
+            <button
+              onClick={() => setPopupOpen((v) => !v)}
+              className={cn(
+                "relative z-50 w-8 h-8 rounded-full overflow-hidden bg-primary-100 dark:bg-primary-900/40",
+                "flex items-center justify-center text-xs font-bold text-primary-600",
+                "cursor-pointer hover:ring-2 hover:ring-primary-500/50 transition-all flex-shrink-0",
+                popupOpen && "ring-2 ring-primary-500/60"
+              )}
+            >
+              {user?.avatar
+                ? <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
+                : (user ? initials(user.name) : "?")}
+            </button>
+          )}
         </div>
       </header>
 
@@ -135,7 +140,7 @@ export default function Navbar({ onNavigate }: NavbarProps) {
                 <p className="text-xs text-[var(--text-muted)] mt-0.5">{user?.email}</p>
                 <div className="flex items-center gap-2 mt-2.5 flex-wrap justify-center">
                   <span className={cn(
-                    "badge text-[10px] font-semibold px-2.5 py-0.5",
+                    "badge text-xs font-semibold px-2.5 py-0.5",
                     user?.role === "admin"
                       ? "bg-amber-50 dark:bg-amber-500/10 text-amber-600"
                       : "badge-emerald"
@@ -143,7 +148,7 @@ export default function Navbar({ onNavigate }: NavbarProps) {
                     {user?.role}
                   </span>
                   <span className={cn(
-                    "badge text-[10px] font-semibold px-2.5 py-0.5",
+                    "badge text-xs font-semibold px-2.5 py-0.5",
                     sub.planId === "pro"
                       ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600"
                       : "bg-[var(--surface)] text-[var(--text-muted)]"

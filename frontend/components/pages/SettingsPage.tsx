@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Lock, Sun, Globe, Bell, Shield, Trash2,
+  Lock, Sun, Globe, Trash2,
   Eye, EyeOff, AlertCircle, BarChart3
 } from "lucide-react";
 import { useStore } from "@/lib/store";
@@ -16,8 +16,6 @@ const TABS = [
   { id: "password",  label: "Change Password", icon: Lock },
   { id: "theme",     label: "Appearance",       icon: Sun },
   { id: "language",  label: "Language",         icon: Globe },
-  { id: "notify",    label: "Notifications",    icon: Bell },
-  { id: "privacy",   label: "Privacy",          icon: Shield },
   { id: "danger",    label: "Delete Account",   icon: Trash2, danger: true },
 ];
 
@@ -26,8 +24,7 @@ export default function SettingsPage({ onNavigate }: { onNavigate: (p: string) =
   const [tab, setTab]     = useState("usage");
   const [saving, setSaving] = useState(false);
 
-  const [notifs,  setNotifs]  = useState({ email: true,  browser: false, weekly: true });
-  const [privacy, setPrivacy] = useState({ publicProfile: false, analytics: true });
+
   const [pw,      setPw]      = useState({ current: "", next: "", confirm: "" });
   const [showPw,  setShowPw]  = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState("");
@@ -61,21 +58,6 @@ export default function SettingsPage({ onNavigate }: { onNavigate: (p: string) =
     setSaving(false);
   };
 
-  const Toggle = ({ checked, onChange }: { checked: boolean; onChange: () => void }) => (
-    <button
-      onClick={onChange}
-      style={{ height: "22px", minWidth: "40px" }}
-      className={cn(
-        "relative rounded-full transition-colors flex-shrink-0",
-        checked ? "bg-primary-600" : "bg-[var(--border)]"
-      )}
-    >
-      <span className={cn(
-        "absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform",
-        checked && "translate-x-[18px]"
-      )} />
-    </button>
-  );
 
   const Row = ({ label, desc, children }: { label: string; desc?: string; children: React.ReactNode }) => (
     <div className="flex items-center justify-between py-4 border-b border-[var(--border)] last:border-none">
@@ -212,40 +194,7 @@ export default function SettingsPage({ onNavigate }: { onNavigate: (p: string) =
                 </div>
               )}
 
-              {/* ── Notifications ── */}
-              {tab === "notify" && (
-                <div>
-                  <h2 className="text-lg font-bold text-[var(--text)] mb-5">Notifications</h2>
-                  <Row label="Email Notifications" desc="Get notified about processing completions">
-                    <Toggle checked={notifs.email}   onChange={() => setNotifs((n) => ({ ...n, email:   !n.email }))} />
-                  </Row>
-                  <Row label="Browser Notifications" desc="Show desktop alerts for long-running tasks">
-                    <Toggle checked={notifs.browser} onChange={() => setNotifs((n) => ({ ...n, browser: !n.browser }))} />
-                  </Row>
-                  <Row label="Weekly Summary" desc="Get a weekly digest of your activity">
-                    <Toggle checked={notifs.weekly}  onChange={() => setNotifs((n) => ({ ...n, weekly:  !n.weekly }))} />
-                  </Row>
-                </div>
-              )}
 
-              {/* ── Privacy ── */}
-              {tab === "privacy" && (
-                <div>
-                  <h2 className="text-lg font-bold text-[var(--text)] mb-5">Privacy</h2>
-                  <Row label="Public Profile" desc="Allow others to see your profile">
-                    <Toggle checked={privacy.publicProfile} onChange={() => setPrivacy((p) => ({ ...p, publicProfile: !p.publicProfile }))} />
-                  </Row>
-                  <Row label="Usage Analytics" desc="Help improve Schemalens by sharing anonymous usage data">
-                    <Toggle checked={privacy.analytics} onChange={() => setPrivacy((p) => ({ ...p, analytics: !p.analytics }))} />
-                  </Row>
-                  <div className="mt-6 p-4 rounded-xl bg-[var(--surface)] border border-[var(--border)]">
-                    <p className="text-xs font-semibold text-[var(--text)] mb-1">Data Handling</p>
-                    <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-                      Your ER diagrams and generated SQL are processed securely by our AI engine. Images are sent for analysis and are not stored on our servers. Generated code is stored locally in your browser.
-                    </p>
-                  </div>
-                </div>
-              )}
 
               {/* ── Delete Account ── */}
               {tab === "danger" && (

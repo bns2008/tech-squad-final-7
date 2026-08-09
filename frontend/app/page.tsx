@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -97,7 +97,7 @@ export default function RootPage() {
   }
 
   // â”€â”€ Logged in: main app â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  const ml = sidebarCollapsed ? 64 : 220;
+  const ml = sidebarCollapsed ? 72 : 248;
 
   const navigate = (page: string) => {
     // guard admin route
@@ -131,7 +131,7 @@ export default function RootPage() {
       <Sidebar page={appPage} onNavigate={navigate} />
 
       <div className="app-main flex-1 flex flex-col min-h-screen" style={{ marginLeft: ml, transition: "margin-left 0.25s cubic-bezier(0.16,1,0.3,1)" }}>
-        <Navbar onNavigate={navigate} />
+        <Navbar onNavigate={navigate} page={appPage} />
 
         <main className="flex-1 pt-[57px] relative overflow-hidden">
           {appPage === "dashboard" && <DatabaseScene />}
@@ -149,7 +149,13 @@ export default function RootPage() {
               </motion.div>
             </AnimatePresence>
           ) : (
-            <div className="max-w-[1280px] mx-auto px-4 sm:px-6 py-7">
+            <div
+              className="w-full py-7 transition-all duration-[250ms] ease-[cubic-bezier(0.16,1,0.3,1)]"
+              style={{
+                paddingLeft: sidebarCollapsed ? "1.5rem" : "1.25rem",
+                paddingRight: sidebarCollapsed ? "1.5rem" : "1.25rem",
+              }}
+            >
               <AnimatePresence mode="wait">
                 <motion.div
                   key={appPage}

@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -34,12 +34,12 @@ function KpiCard({
       className="card p-5 flex flex-col gap-3"
     >
       <div className="flex items-center justify-between">
-        <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center", bg)}>
-          <Icon size={18} className={color} />
+        <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center", bg)}>
+          <Icon size={22} className={color} />
         </div>
         {trend && (
           <span className={cn(
-            "text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-0.5",
+            "text-xs font-bold px-2.5 py-0.5 rounded-full flex items-center gap-0.5",
             trend.up
               ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600"
               : "bg-red-50 dark:bg-red-500/10 text-red-500"
@@ -49,9 +49,9 @@ function KpiCard({
         )}
       </div>
       <div>
-        <div className="text-2xl font-bold text-[var(--text)] tabular-nums leading-none">{value}</div>
-        <div className="text-xs font-semibold text-[var(--text-muted)] mt-1">{label}</div>
-        {subtitle && <div className="text-[10px] text-[var(--text-subtle)] mt-0.5">{subtitle}</div>}
+        <div className="text-4xl font-bold text-[var(--text)] tabular-nums leading-none">{value}</div>
+        <div className="text-sm font-semibold text-[var(--text-muted)] mt-2">{label}</div>
+        {subtitle && <div className="text-xs text-[var(--text-subtle)] mt-0.5">{subtitle}</div>}
       </div>
     </motion.div>
   );
@@ -64,15 +64,15 @@ function ProgressRow({ label, used, total, color }: {
   const pct = Math.min(100, total > 0 ? Math.round((used / total) * 100) : 0);
   const isHigh = pct >= 80;
   return (
-    <div className="space-y-1.5">
-      <div className="flex items-center justify-between text-xs">
+    <div className="space-y-2">
+      <div className="flex items-center justify-between text-sm">
         <span className="font-medium text-[var(--text-muted)]">{label}</span>
         <span className={cn("font-bold tabular-nums", isHigh ? "text-red-500" : "text-[var(--text)]")}>
           {used} / {total}
           <span className="text-[var(--text-subtle)] font-normal ml-1">({pct}%)</span>
         </span>
       </div>
-      <div className="h-2 rounded-full bg-[var(--surface)] overflow-hidden">
+      <div className="h-2.5 rounded-full bg-[var(--surface)] overflow-hidden">
         <motion.div
           initial={{ width: 0 }}
           animate={{ width: `${Math.max(3, pct)}%` }}
@@ -96,22 +96,22 @@ function ToolCard({ icon: Icon, title, desc, badge, accentColor, btnColor, delay
       className="card p-5 flex flex-col gap-3 cursor-pointer hover:shadow-lg transition-all duration-200 group"
     >
       <div className="flex items-start justify-between">
-        <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center", accentColor)}>
-          <Icon size={18} className="text-white" />
+        <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center", accentColor)}>
+          <Icon size={22} className="text-white" />
         </div>
-        <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-[var(--surface)] text-[var(--text-muted)] border border-[var(--border)] uppercase tracking-wider">
+        <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-[var(--surface)] text-[var(--text-muted)] border border-[var(--border)] uppercase tracking-wider">
           {badge}
         </span>
       </div>
       <div className="flex-1">
-        <h3 className="text-sm font-bold text-[var(--text)]">{title}</h3>
-        <p className="text-[11px] text-[var(--text-muted)] mt-1 leading-relaxed">{desc}</p>
+        <h3 className="text-base font-bold text-[var(--text)]">{title}</h3>
+        <p className="text-sm text-[var(--text-muted)] mt-1 leading-relaxed">{desc}</p>
       </div>
       <button
         onClick={(e) => { e.stopPropagation(); onClick(); }}
-        className={cn("flex items-center justify-center gap-1.5 w-full py-2 rounded-xl text-xs font-semibold text-white transition-all", btnColor)}
+        className={cn("flex items-center justify-center gap-1.5 w-full py-2.5 rounded-xl text-sm font-semibold text-white transition-all", btnColor)}
       >
-        Open <ArrowRight size={11} />
+        Open <ArrowRight size={13} />
       </button>
     </motion.div>
   );
@@ -144,15 +144,15 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (p: string) 
   const [limitOpen, setLimitOpen] = useState(false);
 
   return (
-    <div className="w-full max-w-6xl mx-auto space-y-6 pb-8">
+    <div className="w-full space-y-6 pb-8">
 
       {/* ── HERO ─────────────────────────────────────────────────────────── */}
       <motion.div {...fadeUp(0)} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-[var(--text)]">
+          <h1 className="text-3xl sm:text-4xl font-bold text-[var(--text)]">
             Welcome back, {user?.name?.split(" ")[0] ?? "there"} 👋
           </h1>
-          <p className="mt-1 text-sm text-[var(--text-muted)]">
+          <p className="mt-1.5 text-base text-[var(--text-muted)]">
             Here's what's happening with your databases today.
           </p>
         </div>
@@ -187,10 +187,10 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (p: string) 
           {/* Plan usage */}
           <motion.div {...fadeUp(0.20)} className="card p-5">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xs font-bold uppercase tracking-widest text-[var(--text-subtle)]">Plan Usage</h2>
+              <h2 className="text-sm font-bold uppercase tracking-widest text-[var(--text-subtle)]">Plan Usage</h2>
               <div className="flex items-center gap-2">
                 <span className={cn(
-                  "text-[10px] font-bold px-2.5 py-0.5 rounded-full border",
+                  "text-xs font-bold px-2.5 py-0.5 rounded-full border",
                   isPro
                     ? "bg-amber-50 dark:bg-amber-500/10 text-amber-600 border-amber-200 dark:border-amber-500/30"
                     : "bg-[var(--surface)] text-[var(--text-muted)] border-[var(--border)]"
@@ -199,7 +199,7 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (p: string) 
                 </span>
                 {!isPro && (
                   <button onClick={() => onNavigate("pricing")}
-                    className="text-[10px] font-bold text-[var(--primary)] hover:underline">
+                    className="text-xs font-bold text-[var(--primary)] hover:underline">
                     Upgrade →
                   </button>
                 )}
@@ -214,7 +214,7 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (p: string) 
 
           {/* Quick action tools */}
           <motion.div {...fadeUp(0.22)} className="card p-5">
-            <h2 className="text-xs font-bold uppercase tracking-widest text-[var(--text-subtle)] mb-4">
+            <h2 className="text-sm font-bold uppercase tracking-widest text-[var(--text-subtle)] mb-4">
               Tools
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -240,10 +240,10 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (p: string) 
           {/* Recent projects */}
           <motion.div {...fadeUp(0.18)} className="card p-5">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xs font-bold uppercase tracking-widest text-[var(--text-subtle)]">Recent Projects</h2>
+              <h2 className="text-sm font-bold uppercase tracking-widest text-[var(--text-subtle)]">Recent Projects</h2>
               <button onClick={() => onNavigate("projects")}
-                className="text-[10px] font-bold text-[var(--primary)] hover:underline flex items-center gap-0.5">
-                View all <ChevronRight size={11} />
+                className="text-xs font-bold text-[var(--primary)] hover:underline flex items-center gap-0.5">
+                View all <ChevronRight size={13} />
               </button>
             </div>
             {recentProjects.length > 0 ? (
@@ -261,25 +261,25 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (p: string) 
                       onClick={() => { useStore.getState().setActiveProject(p.id); onNavigate("project-detail"); }}
                       className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-[var(--surface)] transition-colors text-left group"
                     >
-                      <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
                         style={{ background: "var(--primary-light)" }}>
-                        <Database size={14} style={{ color: "var(--primary)" }} />
+                        <Database size={16} style={{ color: "var(--primary)" }} />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5">
-                          <p className="text-xs font-bold text-[var(--text)] truncate group-hover:text-[var(--primary)] transition-colors">{p.name}</p>
-                          {p.pinned && <Star size={9} className="fill-amber-400 text-amber-400 flex-shrink-0" />}
+                          <p className="text-sm font-bold text-[var(--text)] truncate group-hover:text-[var(--primary)] transition-colors">{p.name}</p>
+                          {p.pinned && <Star size={11} className="fill-amber-400 text-amber-400 flex-shrink-0" />}
                         </div>
                         <div className="flex items-center gap-2 mt-1">
-                          <div className="flex-1 h-1 rounded-full bg-[var(--border)] overflow-hidden">
+                          <div className="flex-1 h-1.5 rounded-full bg-[var(--border)] overflow-hidden">
                             <div className="h-full rounded-full bg-emerald-500" style={{ width: `${pct}%` }} />
                           </div>
-                          <span className="text-[9px] text-[var(--text-subtle)] tabular-nums flex-shrink-0">{done}/{total}</span>
+                          <span className="text-xs text-[var(--text-subtle)] tabular-nums flex-shrink-0">{done}/{total}</span>
                         </div>
                       </div>
                       <div className="text-right flex-shrink-0">
-                        <p className="text-[9px] text-[var(--text-subtle)]">{timeAgo(p.updatedAt)}</p>
-                        <p className="text-[9px] font-bold text-[var(--text-muted)] uppercase mt-0.5">{p.dbType}</p>
+                        <p className="text-xs text-[var(--text-subtle)]">{timeAgo(p.updatedAt)}</p>
+                        <p className="text-xs font-bold text-[var(--text-muted)] uppercase mt-0.5">{p.dbType}</p>
                       </div>
                     </motion.button>
                   );
@@ -287,10 +287,10 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (p: string) 
               </div>
             ) : (
               <div className="flex flex-col items-center gap-2 py-6 text-center">
-                <FolderOpen size={28} className="text-[var(--text-subtle)]" />
-                <p className="text-xs text-[var(--text-muted)]">No projects yet</p>
+                <FolderOpen size={32} className="text-[var(--text-subtle)]" />
+                <p className="text-sm text-[var(--text-muted)]">No projects yet</p>
                 <button onClick={() => onNavigate("projects")}
-                  className="text-xs font-semibold text-[var(--primary)] hover:underline">
+                  className="text-sm font-semibold text-[var(--primary)] hover:underline">
                   Create your first project →
                 </button>
               </div>
@@ -300,10 +300,10 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (p: string) 
           {/* Recent quick convert activity */}
           <motion.div {...fadeUp(0.24)} className="card p-5">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xs font-bold uppercase tracking-widest text-[var(--text-subtle)]">Recent Activity</h2>
+              <h2 className="text-sm font-bold uppercase tracking-widest text-[var(--text-subtle)]">Recent Activity</h2>
               <button onClick={() => onNavigate("history")}
-                className="text-[10px] font-bold text-[var(--primary)] hover:underline flex items-center gap-0.5">
-                History <ChevronRight size={11} />
+                className="text-xs font-bold text-[var(--primary)] hover:underline flex items-center gap-0.5">
+                History <ChevronRight size={13} />
               </button>
             </div>
             {recentActivity.length > 0 ? (
@@ -315,28 +315,28 @@ export default function DashboardPage({ onNavigate }: { onNavigate: (p: string) 
                     transition={{ delay: 0.28 + i * 0.04 }}
                     className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-[var(--surface)] transition-colors"
                   >
-                    <div className="w-8 h-8 rounded-lg bg-sky-50 dark:bg-sky-500/10 flex items-center justify-center flex-shrink-0">
-                      <Sparkles size={12} className="text-sky-600" />
+                    <div className="w-9 h-9 rounded-lg bg-sky-50 dark:bg-sky-500/10 flex items-center justify-center flex-shrink-0">
+                      <Sparkles size={15} className="text-sky-600" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-[11px] font-semibold text-[var(--text)] truncate">{r.filename}</p>
-                      <p className="text-[10px] text-[var(--text-subtle)]">
+                      <p className="text-sm font-semibold text-[var(--text)] truncate">{r.filename}</p>
+                      <p className="text-xs text-[var(--text-subtle)]">
                         {r.stats.tables} tables · {r.stats.relationships} rels
                       </p>
                     </div>
                     <div className="text-right flex-shrink-0">
-                      <p className="text-[9px] text-[var(--text-subtle)]">{timeAgo(r.timestamp)}</p>
-                      <p className="text-[9px] font-bold text-emerald-500">Done</p>
+                      <p className="text-xs text-[var(--text-subtle)]">{timeAgo(r.timestamp)}</p>
+                      <p className="text-xs font-bold text-emerald-500">Done</p>
                     </div>
                   </motion.div>
                 ))}
               </div>
             ) : (
               <div className="flex flex-col items-center gap-2 py-6 text-center">
-                <Clock size={28} className="text-[var(--text-subtle)]" />
-                <p className="text-xs text-[var(--text-muted)]">No recent activity</p>
+                <Clock size={32} className="text-[var(--text-subtle)]" />
+                <p className="text-sm text-[var(--text-muted)]">No recent activity</p>
                 <button onClick={() => onNavigate("quick-convert")}
-                  className="text-xs font-semibold text-[var(--primary)] hover:underline">
+                  className="text-sm font-semibold text-[var(--primary)] hover:underline">
                   Try Quick Convert →
                 </button>
               </div>
