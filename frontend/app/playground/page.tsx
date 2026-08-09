@@ -31,6 +31,7 @@ import {
 import { cn, downloadText } from "@/lib/utils";
 import { parseSQLSchema } from "@/lib/sqlParser";
 import { useStore } from "@/lib/store";
+import { canUsePlayground } from "@/lib/subscription";
 import toast from "react-hot-toast";
 import ERDiagramModal from "@/components/ERDiagramModal";
 import type { DiagramType } from "@/components/ERDiagramModal";
@@ -180,9 +181,104 @@ function mockExecute(sql: string): ExecutionResult {
   };
 }
 
+// ── Pro-only gate ─────────────────────────────────────────────────────────────
+function PlaygroundLocked() {
+  // Read navigate from the main app store — we can't call onNavigate here
+  // since playground/page.tsx is loaded without props in some routes.
+  // Instead we dispatch a custom event that page.tsx (SPA root) listens to.
+  const goToPricing = () => {
+    window.dispatchEvent(new CustomEvent("navigate", { detail: "pricing" }));
+  };
+
+  return (
+    <div
+      className="flex flex-col items-center justify-center"
+      style={{ height: "calc(100vh - 57px)", background: "var(--surface)" }}
+    >
+      {/* Glow backdrop */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden>
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] rounded-full"
+          style={{ background: "radial-gradient(ellipse,rgba(139,170,130,0.07) 0%,transparent 70%)", filter: "blur(60px)" }} />
+      </div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 24 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+        className="relative flex flex-col items-center gap-6 text-center max-w-md px-6"
+      >
+        {/* Icon */}
+        <div className="relative">
+          <div className="w-20 h-20 rounded-2xl flex items-center justify-center"
+            style={{ background: "var(--card)", border: "1px solid var(--border)",
+              boxShadow: "0 8px 32px rgba(0,0,0,0.12)" }}>
+            <Terminal size={32} style={{ color: "var(--primary)" }} />
+          </div>
+          {/* Lock badge */}
+          <div className="absolute -top-2 -right-2 w-8 h-8 rounded-full flex items-center justify-center"
+            style={{ background: "var(--warning)", boxShadow: "0 4px 12px rgba(0,0,0,0.2)" }}>
+            <span className="text-base leading-none">🔒</span>
+          </div>
+        </div>
+
+        {/* Heading */}
+        <div>
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold mb-3"
+            style={{ background: "rgba(139,170,130,0.12)", color: "var(--primary)",
+              border: "1px solid rgba(139,170,130,0.25)" }}>
+            <Zap size={11} /> Pro Feature
+          </div>
+          <h2 className="text-2xl font-bold text-[var(--text)] mb-2">
+            SQL Playground
+          </h2>
+          <p className="text-sm text-[var(--text-muted)] leading-relaxed">
+            The SQL Playground — Monaco editor, live ER diagrams, format &amp; export — is available on the Pro plan.
+          </p>
+        </div>
+
+        {/* Feature list */}
+        <div className="w-full card p-5 text-left space-y-3">
+          {[
+            { icon: "⚡", text: "Monaco editor with SQL syntax highlighting" },
+            { icon: "🔀", text: "Live ER diagrams, flowcharts & DFD" },
+            { icon: "📋", text: "Format, copy and download schema.sql" },
+            { icon: "📜", text: "Full query history (last 50 runs)" },
+            { icon: "🔎", text: "Table explorer from your SQL" },
+          ].map(({ icon, text }) => (
+            <div key={text} className="flex items-center gap-3">
+              <span className="text-base leading-none flex-shrink-0">{icon}</span>
+              <span className="text-sm text-[var(--text-muted)]">{text}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* CTA */}
+        <div className="flex flex-col gap-3 w-full">
+          <motion.button
+            whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
+            onClick={goToPricing}
+            className="btn-primary w-full justify-center py-3 text-sm font-bold"
+          >
+            <Zap size={15} className="text-yellow-300" />
+            Upgrade to Pro — ₹199 / month
+          </motion.button>
+          <p className="text-[11px] text-[var(--text-subtle)]">
+            Instant access after upgrade · Cancel anytime
+          </p>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
 // ── Main Component ─────────────────────────────────────────────────────────────
 export default function PlaygroundPage() {
-  const { theme, playgroundInitialSQL, setPlaygroundInitialSQL } = useStore();
+  const { theme, playgroundInitialSQL, setPlaygroundInitialSQL, getSubscription } = useStore();
+  const isPro = canUsePlayground(getSubscription());
+
+  if (!isPro) {
+    return <PlaygroundLocked />;
+  }
   const [sql, setSql] = useState(playgroundInitialSQL || DEFAULT_SQL);
   const [result, setResult] = useState<ExecutionResult>({ status: "idle", message: "" });
   const [outputOpen, setOutputOpen] = useState(true);

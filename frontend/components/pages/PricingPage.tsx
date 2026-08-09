@@ -40,6 +40,7 @@ const FEATURE_ROWS = [
   { label: "Quick Convert",             free: true,   pro: true },
   { label: "Monaco code editor",        free: true,   pro: true },
   { label: "SQL / TXT / JSON export",   free: true,   pro: true },
+  { label: "SQL Playground",            free: false,  pro: true },
   { label: "ZIP project export",        free: false,  pro: true },
   { label: "Version history",           free: false,  pro: true },
   { label: "Priority queue",            free: false,  pro: true },
@@ -233,7 +234,7 @@ export default function PricingPage() {
                 {f}
               </li>
             ))}
-            {["ZIP export", "Version history", "Priority queue"].map((f) => (
+            {["SQL Playground", "ZIP export", "Version history", "Priority queue"].map((f) => (
               <li key={f} className="flex items-center gap-2.5 text-sm text-[var(--text-subtle)] opacity-50">
                 <X size={12} className="text-[var(--border)] flex-shrink-0" />
                 {f}
@@ -288,6 +289,7 @@ export default function PricingPage() {
               "25 images per project",
               "Quick Convert",
               "SQL · TXT · JSON export",
+              "SQL Playground",
               "ZIP project export",
               "Version history",
               "Priority queue",

@@ -92,3 +92,7 @@ export function effectiveLimits(sub: Subscription) {
 export function getPlan(sub: Subscription): Plan {
   return PLANS[sub.planId];
 }
+
+export function canUsePlayground(sub: Subscription): boolean {
+  return sub.planId === "pro";
+}

@@ -2,11 +2,12 @@
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, FolderOpen, History, Settings, Shield,
-  ChevronLeft, ChevronRight, Database, LogOut, Plus, Sparkles, CreditCard, UserRound, X, Wand2, ArrowRightLeft, Wrench, ChevronDown, Terminal
+  ChevronLeft, ChevronRight, Database, LogOut, Plus, Sparkles, CreditCard, UserRound, X, Wand2, ArrowRightLeft, Wrench, ChevronDown, Terminal, Lock
 } from "lucide-react";
 import { useState } from "react";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
+import { canUsePlayground } from "@/lib/subscription";
 
 interface SidebarProps {
   page: string;
@@ -73,8 +74,9 @@ function NavBtn({
 
 // ─────────────────────────────────────────────────────────────────────────────
 export default function Sidebar({ page, onNavigate }: SidebarProps) {
-  const { user, sidebarCollapsed, setSidebarCollapsed, projects: allProjects, theme } = useStore();
+  const { user, sidebarCollapsed, setSidebarCollapsed, projects: allProjects, theme, getSubscription } = useStore();
   const activeNav = `${activeNavBase} ${activeTextColor(theme)}`;
+  const isPro = canUsePlayground(getSubscription());
 
   const [mobileOpen, setMobileOpen] = useState(true);
   const [toolsOpen, setToolsOpen] = useState(
@@ -223,7 +225,9 @@ export default function Sidebar({ page, onNavigate }: SidebarProps) {
                 className="overflow-hidden"
               >
                 <div className="mt-1 ml-3 pl-3 border-l border-[var(--border)] space-y-0.5 pb-1">
-                  {toolsItems.map(({ id, label, icon: Icon, badge }) => (
+                  {toolsItems.map(({ id, label, icon: Icon, badge }) => {
+                    const isLocked = id === "playground" && !isPro;
+                    return (
                     <button
                       key={id}
                       onClick={() => handleNavigate(id)}
@@ -235,16 +239,24 @@ export default function Sidebar({ page, onNavigate }: SidebarProps) {
                     >
                       <Icon size={14} className="flex-shrink-0" />
                       <span className="flex-1 truncate text-left">{label}</span>
-                      <span className={cn(
-                        "text-[9px] font-semibold px-1.5 py-0.5 rounded hidden group-hover:inline-block",
-                        page === id
-                          ? `inline-block ${activeTextColor(theme)} bg-black/10`
-                          : "text-white bg-white/20",
-                      )}>
-                        {badge}
-                      </span>
+                      {isLocked ? (
+                        <span className="flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded"
+                          style={{ background: "rgba(201,155,94,0.18)", color: "var(--warning)", border: "1px solid rgba(201,155,94,0.30)" }}>
+                          <Lock size={8} /> Pro
+                        </span>
+                      ) : (
+                        <span className={cn(
+                          "text-[9px] font-semibold px-1.5 py-0.5 rounded hidden group-hover:inline-block",
+                          page === id
+                            ? `inline-block ${activeTextColor(theme)} bg-black/10`
+                            : "text-white bg-white/20",
+                        )}>
+                          {badge}
+                        </span>
+                      )}
                     </button>
-                  ))}
+                    );
+                  })}
                 </div>
               </motion.div>
             )}

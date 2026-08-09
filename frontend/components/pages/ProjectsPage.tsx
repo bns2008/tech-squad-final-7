@@ -3,7 +3,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Plus, Search, FolderOpen, MoreVertical, Trash2, Edit2, Copy,
-  Database, Pin, X, CheckSquare, Square, AlertTriangle
+  Database, Pin, X, CheckSquare, Square, AlertTriangle, List, Globe2
 } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { genId, timeAgo } from "@/lib/utils";
@@ -11,6 +11,7 @@ import { canCreateProject } from "@/lib/subscription";
 import { cn } from "@/lib/utils";
 import type { Project, DBType } from "@/lib/types";
 import UpgradeLimitDialog from "@/components/UpgradeLimitDialog";
+import GalaxyView from "@/components/GalaxyView";
 import toast from "react-hot-toast";
 import { apiSaveProject, apiDeleteProject } from "@/lib/api";
 
@@ -21,6 +22,8 @@ const DB_TYPES: { id: DBType; label: string }[] = [
   { id: "mssql",      label: "SQL Server" },
   { id: "oracle",     label: "Oracle" },
 ];
+
+type ViewMode = "list" | "galaxy";
 
 export default function ProjectsPage({ onNavigate }: { onNavigate: (p: string) => void }) {
   const { projects, upsertProject, deleteProject, setActiveProject, user, getSubscription } = useStore();
@@ -33,6 +36,7 @@ export default function ProjectsPage({ onNavigate }: { onNavigate: (p: string) =
   const [renaming,  setRenaming]  = useState<string | null>(null);
   const [renameVal, setRenameVal] = useState("");
   const [form, setForm] = useState({ name: "", description: "", dbType: "postgresql" as DBType });
+  const [viewMode, setViewMode] = useState<ViewMode>("list");
 
   // ── Multi-select state ────────────────────────────────────────────────────
   const [selectMode,   setSelectMode]   = useState(false);
@@ -152,8 +156,36 @@ export default function ProjectsPage({ onNavigate }: { onNavigate: (p: string) =
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {/* Select mode toggle */}
-          {myProjects.length > 0 && !selectMode && (
+          {/* View mode toggle */}
+          <div className="flex items-center rounded-xl border border-[var(--border)] bg-[var(--card)] p-0.5 overflow-hidden">
+            <button
+              onClick={() => setViewMode("list")}
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all",
+                viewMode === "list"
+                  ? "bg-[var(--primary)] text-white shadow-sm"
+                  : "text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--surface)]"
+              )}
+              title="List View"
+            >
+              <List size={13} /> List
+            </button>
+            <button
+              onClick={() => { setViewMode("galaxy"); setSelectMode(false); setSelected(new Set()); }}
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all",
+                viewMode === "galaxy"
+                  ? "bg-[var(--primary)] text-white shadow-sm"
+                  : "text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--surface)]"
+              )}
+              title="Galaxy View"
+            >
+              <Globe2 size={13} /> Galaxy
+            </button>
+          </div>
+
+          {/* Select mode toggle (list view only) */}
+          {viewMode === "list" && myProjects.length > 0 && !selectMode && (
             <button
               onClick={() => { setSelectMode(true); setSelected(new Set()); }}
               className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold
@@ -165,7 +197,7 @@ export default function ProjectsPage({ onNavigate }: { onNavigate: (p: string) =
               <CheckSquare size={14} /> Select
             </button>
           )}
-          {selectMode && (
+          {viewMode === "list" && selectMode && (
             <button onClick={exitSelectMode}
               className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-semibold
                 border border-[var(--border)] text-[var(--text)] bg-[var(--card)]
@@ -184,31 +216,48 @@ export default function ProjectsPage({ onNavigate }: { onNavigate: (p: string) =
         </div>
       </div>
 
-      {/* Search + select-all row */}
-      <div className="flex items-center gap-3 mb-6">
-        <div className="relative flex-1 max-w-sm">
-          <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-subtle)]" />
-          <input
-            className="w-full pl-9 pr-4 py-2.5 text-sm rounded-xl border border-[var(--border)] bg-[var(--card)] text-[var(--text)] placeholder:text-[var(--text-subtle)] focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
-            placeholder="Search projects..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-          />
-        </div>
+      {/* Search + select-all row (list view only) */}
+      {viewMode === "list" && (
+        <div className="flex items-center gap-3 mb-6">
+          <div className="relative flex-1 max-w-sm">
+            <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-subtle)]" />
+            <input
+              className="w-full pl-9 pr-4 py-2.5 text-sm rounded-xl border border-[var(--border)] bg-[var(--card)] text-[var(--text)] placeholder:text-[var(--text-subtle)] focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
+              placeholder="Search projects..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+          </div>
 
-        {/* Select-all checkbox */}
-        {selectMode && filtered.length > 0 && (
-          <button
-            onClick={selectAll}
-            className="flex items-center gap-2 text-sm font-medium text-[var(--text-muted)] hover:text-[var(--text)] transition-colors"
-          >
-            {allSelected
-              ? <CheckSquare size={16} className="text-primary-600" />
-              : <Square size={16} />}
-            {allSelected ? "Deselect all" : "Select all"}
-          </button>
+          {/* Select-all checkbox */}
+          {selectMode && filtered.length > 0 && (
+            <button
+              onClick={selectAll}
+              className="flex items-center gap-2 text-sm font-medium text-[var(--text-muted)] hover:text-[var(--text)] transition-colors"
+            >
+              {allSelected
+                ? <CheckSquare size={16} className="text-primary-600" />
+                : <Square size={16} />}
+              {allSelected ? "Deselect all" : "Select all"}
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* ── Galaxy View ───────────────────────────────────────────────────── */}
+      <AnimatePresence mode="wait">
+        {viewMode === "galaxy" && (
+          <motion.div key="galaxy"
+            initial={{ opacity:0, y:12 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0, y:-8 }}
+            transition={{ duration:0.28, ease:[0.16,1,0.3,1] }}>
+            <GalaxyView projects={myProjects} onNavigate={onNavigate}
+              onCreateProject={() => setShowCreate(true)} />
+          </motion.div>
         )}
-      </div>
+        {viewMode === "list" && (
+          <motion.div key="list"
+            initial={{ opacity:0, y:12 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0, y:-8 }}
+            transition={{ duration:0.22, ease:[0.16,1,0.3,1] }}>
 
       {/* Empty state */}
       {filtered.length === 0 && (
@@ -339,6 +388,10 @@ export default function ProjectsPage({ onNavigate }: { onNavigate: (p: string) =
           })}
         </AnimatePresence>
       </div>
+
+      </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ── Floating bulk-action bar ─────────────────────────────────────────── */}
       <AnimatePresence>

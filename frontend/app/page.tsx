@@ -50,6 +50,16 @@ export default function RootPage() {
     }
   }, []);
 
+  // Listen for navigate events dispatched by gated features (e.g. PlaygroundLocked → Pricing)
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const page = (e as CustomEvent<string>).detail;
+      if (page) setAppPage(page as AppPage);
+    };
+    window.addEventListener("navigate", handler);
+    return () => window.removeEventListener("navigate", handler);
+  }, []);
+
   if (!mounted) return null;
 
   // â”€â”€ Not logged in: show auth screens â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
