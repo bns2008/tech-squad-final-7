@@ -442,7 +442,7 @@ export default function GeneratePage({ onNavigate }: { onNavigate: (p: string) =
   };
 
   return (
-    <div className="w-full max-w-6xl mx-auto px-1">
+    <div className="w-full px-1">
 
       {/* ── Header ── */}
       <div className="flex items-start justify-between mb-8">
@@ -473,8 +473,8 @@ export default function GeneratePage({ onNavigate }: { onNavigate: (p: string) =
       {/* ── Diagram Type Selector ── */}
       <div className="mb-6">
         <div className="flex items-center gap-2 mb-3">
-          <Layers size={15} className="text-[var(--text-muted)]" />
-          <span className="text-sm font-semibold text-[var(--text-muted)] uppercase tracking-widest">
+          <Layers size={17} className="text-[var(--text-muted)]" />
+          <span className="text-base font-semibold text-[var(--text-muted)] uppercase tracking-widest">
             Diagram Type
           </span>
         </div>
@@ -493,9 +493,9 @@ export default function GeneratePage({ onNavigate }: { onNavigate: (p: string) =
                     : "border-[var(--border)] text-[var(--text-muted)] hover:border-[var(--text-subtle)] hover:bg-[var(--surface)]"
                 )}
               >
-                <Icon size={16} className={active ? dt.color : "text-[var(--text-subtle)]"} />
-                <span className="text-xs font-bold leading-tight">{dt.label}</span>
-                <span className="text-[10px] leading-tight opacity-70 hidden sm:block">{dt.desc}</span>
+                <Icon size={18} className={active ? dt.color : "text-[var(--text-subtle)]"} />
+                <span className="text-sm font-bold leading-tight">{dt.label}</span>
+                <span className="text-xs leading-tight opacity-70 hidden sm:block">{dt.desc}</span>
               </button>
             );
           })}
@@ -505,8 +505,8 @@ export default function GeneratePage({ onNavigate }: { onNavigate: (p: string) =
       {/* ── Database Selector ── */}
       <div className="mb-6">
         <div className="flex items-center gap-2 mb-3">
-          <Database size={15} className="text-[var(--text-muted)]" />
-          <span className="text-sm font-semibold text-[var(--text-muted)] uppercase tracking-widest">
+          <Database size={17} className="text-[var(--text-muted)]" />
+          <span className="text-base font-semibold text-[var(--text-muted)] uppercase tracking-widest">
             Target Database
           </span>
         </div>
@@ -516,7 +516,7 @@ export default function GeneratePage({ onNavigate }: { onNavigate: (p: string) =
               key={db.value}
               onClick={() => setSelectedDb(db.value)}
               className={cn(
-                "flex items-center gap-2.5 px-5 py-2.5 rounded-xl text-sm font-semibold border-2 transition-all",
+                "flex items-center gap-2.5 px-5 py-2.5 rounded-xl text-base font-semibold border-2 transition-all",
                 selectedDb === db.value
                   ? `${db.bg} ${db.color} ${db.border} shadow-sm scale-[1.03]`
                   : "border-[var(--border)] text-[var(--text-muted)] hover:border-[var(--text-subtle)] hover:text-[var(--text)] hover:scale-[1.02]"
@@ -535,14 +535,14 @@ export default function GeneratePage({ onNavigate }: { onNavigate: (p: string) =
       {/* ── Input Area ── */}
       <div className="card p-5 mb-6">
         <div className="flex items-center justify-between mb-3">
-          <label className="text-sm font-bold text-[var(--text)]">Describe your database</label>
+          <label className="text-base font-bold text-[var(--text)]">Describe your database</label>
           <button
             onClick={() => setShowExamples(!showExamples)}
-            className="flex items-center gap-1.5 text-xs text-[var(--text-muted)] font-medium hover:text-[var(--text)] transition-colors"
+            className="flex items-center gap-1.5 text-sm text-[var(--text-muted)] font-medium hover:text-[var(--text)] transition-colors"
           >
-            <Lightbulb size={13} />
+            <Lightbulb size={15} />
             Examples
-            {showExamples ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+            {showExamples ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
           </button>
         </div>
 
@@ -558,7 +558,7 @@ export default function GeneratePage({ onNavigate }: { onNavigate: (p: string) =
                   <button
                     key={ex}
                     onClick={() => { setDescription(ex); setShowExamples(false); }}
-                    className="text-xs px-3 py-1.5 rounded-lg border border-[var(--border)]
+                    className="text-sm px-3 py-1.5 rounded-lg border border-[var(--border)]
                       bg-[var(--surface)] text-[var(--text-muted)] hover:border-[var(--text-subtle)]
                       hover:text-[var(--text)] hover:bg-[var(--card)]
                       transition-all text-left"
@@ -578,12 +578,12 @@ export default function GeneratePage({ onNavigate }: { onNavigate: (p: string) =
           placeholder="e.g. A university database with students, courses, professors, enrollments, and departments. Students can enroll in multiple courses. Each course is taught by one professor who belongs to a department."
           rows={4}
           className="w-full resize-none rounded-xl border border-[var(--border)] bg-[var(--surface)]
-            text-[var(--text)] placeholder:text-[var(--text-subtle)] text-sm px-4 py-3
+            text-[var(--text)] placeholder:text-[var(--text-subtle)] text-base px-4 py-3
             focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500
             transition-all disabled:opacity-50"
         />
         <div className="flex items-center justify-between mt-3">
-          <span className="text-xs text-[var(--text-subtle)]">
+          <span className="text-sm text-[var(--text-subtle)]">
             {description.length} / 2000 characters
           </span>
           <div className="flex items-center gap-2">

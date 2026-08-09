@@ -139,7 +139,7 @@ export default function UsagePage({ onNavigate }: { onNavigate: (p: string) => v
     .sort((a, b) => b.updatedAt - a.updatedAt);
 
   return (
-    <div className="w-full max-w-5xl mx-auto space-y-8">
+    <div className="w-full space-y-8">
 
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <motion.div {...fadeUp(0)} className="flex items-start justify-between gap-4 flex-wrap">

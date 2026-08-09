@@ -1,8 +1,13 @@
-﻿"use client";
+"use client";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, FolderOpen, History, Settings, Shield,
+<<<<<<< HEAD
   ChevronLeft, ChevronRight, Database, LogOut, Plus, Sparkles, CreditCard, UserRound, X, Wand2, ArrowRightLeft, Wrench, ChevronDown, Terminal, Lock, Bot
+=======
+  ChevronLeft, ChevronRight, Database, LogOut, Plus, Sparkles, CreditCard, UserRound, X,
+  Wand2, ArrowRightLeft, Wrench, ChevronDown, Terminal, Lock
+>>>>>>> 41514771789bf48316f6e56119490ab30e850530
 } from "lucide-react";
 import { useState } from "react";
 import { useStore } from "@/lib/store";
@@ -41,7 +46,6 @@ const bottomHover =
 
 const activeStyle: React.CSSProperties = { background: "var(--primary)" };
 
-// light theme → white text on blue/indigo; dark theme → black text on pista/green
 function activeTextColor(theme: string) {
   return theme === "dark" ? "text-black" : "text-white";
 }
@@ -62,7 +66,7 @@ function NavBtn({
       onClick={onClick}
       title={title}
       className={cn(
-        "w-full flex items-center gap-3 px-[18px] py-[11px] rounded-[12px] text-sm font-medium transition-all duration-200",
+        "w-full flex items-center gap-3 px-[18px] py-[13px] rounded-[12px] text-[15px] font-medium transition-all duration-200",
         active ? activeClass : inactiveNav,
       )}
       style={active ? activeStyle : undefined}
@@ -86,8 +90,13 @@ export default function Sidebar({ page, onNavigate }: SidebarProps) {
 
   const projects = allProjects.filter(p => p.ownerId === (user?.id ?? ""));
   const isAdmin = user?.role === "admin";
+<<<<<<< HEAD
   const width = sidebarCollapsed ? 64 : 220;
   const isToolPage = ["quick-convert", "generate", "migrate", "playground", "assistant"].includes(page);
+=======
+  const width = sidebarCollapsed ? 72 : 248;
+  const isToolPage = ["quick-convert", "generate", "migrate", "playground"].includes(page);
+>>>>>>> 41514771789bf48316f6e56119490ab30e850530
 
   const handleNavigate = (id: string) => {
     onNavigate(id);
@@ -105,12 +114,12 @@ export default function Sidebar({ page, onNavigate }: SidebarProps) {
       )}
     >
       {/* ── Logo ──────────────────────────────────────────────────────────── */}
-      <div className="flex items-center h-[57px] px-[14px] border-b border-[var(--border)] flex-shrink-0 gap-3">
+      <div className="flex items-center h-[60px] px-[14px] border-b border-[var(--border)] flex-shrink-0 gap-3">
         <div
-          className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+          className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
           style={{ background: "var(--primary)" }}
         >
-          <Database size={15} className="text-white" />
+          <Database size={17} className="text-white" />
         </div>
 
         <AnimatePresence>
@@ -122,10 +131,10 @@ export default function Sidebar({ page, onNavigate }: SidebarProps) {
               transition={{ duration: 0.2 }}
               className="min-w-0"
             >
-              <p className="font-bold text-[14px] text-[var(--text)] whitespace-nowrap leading-tight">
+              <p className="font-bold text-[16px] text-[var(--text)] whitespace-nowrap leading-tight">
                 Schemalens
               </p>
-              <p className="text-[10px] text-[var(--text-subtle)] whitespace-nowrap leading-tight mt-0.5">
+              <p className="text-[13px] text-[var(--text-subtle)] whitespace-nowrap leading-tight mt-0.5">
                 AI Schema Toolkit
               </p>
             </motion.div>
@@ -137,29 +146,30 @@ export default function Sidebar({ page, onNavigate }: SidebarProps) {
           className="mobile-sidebar-close"
           aria-label="Close navigation"
         >
-          <X size={17} />
+          <X size={18} />
         </button>
       </div>
 
       {/* ── Nav ───────────────────────────────────────────────────────────── */}
       <nav className="flex-1 px-[10px] py-3 space-y-0.5 overflow-y-auto overflow-x-hidden">
 
-        {/* ── ADMIN MODE: only show Admin Panel link ─────────────────────── */}
+        {/* ── ADMIN MODE ────────────────────────────────────────────────── */}
         {page === "admin" ? (
           <button
             onClick={() => handleNavigate("admin")}
             title="Admin Panel"
             className={cn(
-              "w-full flex items-center gap-3 px-[18px] py-[11px] rounded-[12px] text-sm font-medium transition-all duration-200",
+              "w-full flex items-center gap-3 px-[18px] py-[13px] rounded-[12px] text-[15px] font-medium transition-all duration-200",
               `${activeTextColor(theme)} shadow-[0_8px_24px_rgba(245,158,11,0.20)]`,
             )}
             style={{ background: "linear-gradient(90deg,#F59E0B,#D97706)" }}
           >
-            <Shield size={16} className="flex-shrink-0" />
+            <Shield size={19} className="flex-shrink-0" />
             {!sidebarCollapsed && <span>Admin Panel</span>}
           </button>
         ) : (
           <>
+<<<<<<< HEAD
         {/* New Project */}
         <button
           onClick={() => handleNavigate("projects")}
@@ -309,46 +319,189 @@ export default function Sidebar({ page, onNavigate }: SidebarProps) {
                 </p>
               )}
             </div>
+=======
+            {/* New Project */}
+>>>>>>> 41514771789bf48316f6e56119490ab30e850530
             <button
-              onClick={() => handleNavigate("admin")}
-              title="Admin Panel"
+              onClick={() => handleNavigate("projects")}
+              title="New Project"
               className={cn(
-                "w-full flex items-center gap-3 px-[18px] py-[11px] rounded-[12px] text-sm font-medium transition-all duration-200",
-                page === "admin"
-                  ? `${activeTextColor(theme)} shadow-[0_8px_24px_rgba(245,158,11,0.20)]`
-                  : inactiveNav,
+                "w-full flex items-center gap-3 px-[18px] py-[13px] rounded-[14px] mb-3 text-[15px] font-semibold transition-all duration-200",
+                activeTextColor(theme),
               )}
-              style={page === "admin" ? { background: "linear-gradient(90deg,#F59E0B,#D97706)" } : undefined}
+              style={{ background: "var(--primary)" }}
+              onMouseEnter={e => (e.currentTarget.style.background = "var(--primary-hover)")}
+              onMouseLeave={e => (e.currentTarget.style.background = "var(--primary)")}
             >
-              <Shield size={16} className="flex-shrink-0" />
-              {!sidebarCollapsed && <span>Admin Panel</span>}
+              <Plus size={17} className="flex-shrink-0" />
+              {!sidebarCollapsed && <span>New Project</span>}
             </button>
-          </>
-        )}
 
-        {/* Recent projects */}
-        {!sidebarCollapsed && projects.length > 0 && (
-          <div className="pt-4">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-subtle)] px-[18px] mb-2 opacity-60">
-              Recent
-            </p>
-            {projects.slice(0, 4).map((p) => (
+            {/* Dashboard */}
+            <NavBtn
+              active={page === "dashboard"}
+              onClick={() => handleNavigate("dashboard")}
+              title="Dashboard"
+              icon={<LayoutDashboard size={19} className="flex-shrink-0" />}
+              label={!sidebarCollapsed ? "Dashboard" : null}
+              activeClass={activeNav}
+            />
+
+            {/* ── Tools accordion ───────────────────────────────────────── */}
+            <div>
               <button
-                key={p.id}
-                onClick={() => { useStore.getState().setActiveProject(p.id); handleNavigate("project-detail"); }}
+                onClick={() => {
+                  if (sidebarCollapsed) {
+                    setSidebarCollapsed(false);
+                    setToolsOpen(true);
+                  } else {
+                    setToolsOpen((o) => !o);
+                  }
+                }}
+                title="Tools"
                 className={cn(
-                  "w-full flex items-center gap-2.5 px-[18px] py-[9px] rounded-[12px] text-xs transition-all duration-200",
-                  inactiveNav,
+                  "w-full flex items-center gap-3 px-[18px] py-[13px] rounded-[12px] text-[15px] font-medium transition-all duration-200",
+                  isToolPage ? activeNav : inactiveNav,
                 )}
+                style={isToolPage ? activeStyle : undefined}
               >
-                <div className="w-5 h-5 rounded-md bg-[var(--primary-light)] flex items-center justify-center flex-shrink-0">
-                  <Database size={10} className="text-[var(--primary)]" />
-                </div>
-                <span className="truncate">{p.name}</span>
+                <Wrench size={19} className="flex-shrink-0" />
+                {!sidebarCollapsed && (
+                  <>
+                    <span className="flex-1 truncate text-left">Tools</span>
+                    <motion.span animate={{ rotate: toolsOpen ? 180 : 0 }} transition={{ duration: 0.2 }}>
+                      <ChevronDown size={15} />
+                    </motion.span>
+                  </>
+                )}
+              </button>
+
+              <AnimatePresence initial={false}>
+                {toolsOpen && !sidebarCollapsed && (
+                  <motion.div
+                    key="tools-dropdown"
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+                    className="overflow-hidden"
+                  >
+                    <div className="mt-1 ml-3 pl-3 border-l border-[var(--border)] space-y-0.5 pb-1">
+                      {toolsItems.map(({ id, label, icon: Icon, badge }) => {
+                        const isLocked = id === "playground" && !isPro;
+                        return (
+                          <button
+                            key={id}
+                            onClick={() => handleNavigate(id)}
+                            className={cn(
+                              "w-full flex items-center gap-2.5 px-[14px] py-[11px] rounded-[12px] text-[14px] font-medium transition-all duration-200 group",
+                              page === id ? activeNav : inactiveNav,
+                            )}
+                            style={page === id ? activeStyle : undefined}
+                          >
+                            <Icon size={16} className="flex-shrink-0" />
+                            <span className="flex-1 truncate text-left">{label}</span>
+                            {isLocked ? (
+                              <span className="flex items-center gap-1 text-[11px] font-bold px-1.5 py-0.5 rounded"
+                                style={{ background: "rgba(201,155,94,0.18)", color: "var(--warning)", border: "1px solid rgba(201,155,94,0.30)" }}>
+                                <Lock size={9} /> Pro
+                              </span>
+                            ) : (
+                              <span className={cn(
+                                "text-[11px] font-semibold px-1.5 py-0.5 rounded hidden group-hover:inline-block",
+                                page === id
+                                  ? `inline-block ${activeTextColor(theme)} bg-black/10`
+                                  : "text-white bg-white/20",
+                              )}>
+                                {badge}
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* Rest of main nav */}
+            {mainNav.filter(n => n.id !== "dashboard").map(({ id, label, icon: Icon }) => (
+              <button
+                key={`${id}-${label}`}
+                onClick={() => handleNavigate(id)}
+                title={label}
+                className={cn(
+                  "w-full flex items-center gap-3 px-[18px] py-[13px] rounded-[12px] text-[15px] font-medium transition-all duration-200",
+                  page === id ? activeNav : inactiveNav,
+                )}
+                style={page === id ? activeStyle : undefined}
+              >
+                <Icon size={19} className="flex-shrink-0" />
+                {!sidebarCollapsed && <span className="truncate">{label}</span>}
+                {!sidebarCollapsed && id === "projects" && projects.length > 0 && (
+                  <span className={cn(
+                    "ml-auto text-[13px] font-bold px-1.5 py-0.5 rounded-full",
+                    page === "projects"
+                      ? `${activeTextColor(theme)} bg-black/10`
+                      : "text-white bg-white/20"
+                  )}>
+                    {projects.length}
+                  </span>
+                )}
               </button>
             ))}
-          </div>
-        )}
+
+            {/* Admin section */}
+            {isAdmin && (
+              <>
+                <div className="pt-4 pb-1">
+                  {!sidebarCollapsed && (
+                    <p className="text-[13px] font-semibold uppercase tracking-widest text-[var(--text-subtle)] px-[18px] opacity-60">
+                      Admin
+                    </p>
+                  )}
+                </div>
+                <button
+                  onClick={() => handleNavigate("admin")}
+                  title="Admin Panel"
+                  className={cn(
+                    "w-full flex items-center gap-3 px-[18px] py-[13px] rounded-[12px] text-[15px] font-medium transition-all duration-200",
+                    page === "admin"
+                      ? `${activeTextColor(theme)} shadow-[0_8px_24px_rgba(245,158,11,0.20)]`
+                      : inactiveNav,
+                  )}
+                  style={page === "admin" ? { background: "linear-gradient(90deg,#F59E0B,#D97706)" } : undefined}
+                >
+                  <Shield size={19} className="flex-shrink-0" />
+                  {!sidebarCollapsed && <span>Admin Panel</span>}
+                </button>
+              </>
+            )}
+
+            {/* Recent projects */}
+            {!sidebarCollapsed && projects.length > 0 && (
+              <div className="pt-4">
+                <p className="text-[13px] font-semibold uppercase tracking-widest text-[var(--text-subtle)] px-[18px] mb-2 opacity-60">
+                  Projects
+                </p>
+                {projects.slice(0, 4).map((p) => (
+                  <button
+                    key={p.id}
+                    onClick={() => { useStore.getState().setActiveProject(p.id); handleNavigate("project-detail"); }}
+                    className={cn(
+                      "w-full flex items-center gap-2.5 px-[18px] py-[11px] rounded-[12px] text-[14px] transition-all duration-200",
+                      inactiveNav,
+                    )}
+                  >
+                    <div className="w-6 h-6 rounded-md bg-[var(--primary-light)] flex items-center justify-center flex-shrink-0">
+                      <Database size={12} className="text-[var(--primary)]" />
+                    </div>
+                    <span className="truncate">{p.name}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </>
         )}
       </nav>
@@ -356,19 +509,19 @@ export default function Sidebar({ page, onNavigate }: SidebarProps) {
       {/* ── Bottom: settings + sign out + collapse ────────────────────────── */}
       <div className="border-t border-[var(--border)] px-[10px] py-3 space-y-0.5 flex-shrink-0">
 
-        {/* Settings — hidden on admin page */}
+        {/* Settings */}
         {page !== "admin" && (
           <button
             onClick={() => handleNavigate("settings")}
             title="Settings"
             className={cn(
-              "w-full flex items-center gap-3 px-[18px] py-[11px] rounded-[12px] text-sm font-medium transition-all duration-200",
+              "w-full flex items-center gap-3 px-[18px] py-[13px] rounded-[12px] text-[15px] font-medium transition-all duration-200",
               page === "settings" ? activeNav : bottomHover,
             )}
             style={page === "settings" ? activeStyle : undefined}
           >
-            <Settings size={15} className="flex-shrink-0" />
-            {!sidebarCollapsed && <span className="text-xs">Settings</span>}
+            <Settings size={19} className="flex-shrink-0" />
+            {!sidebarCollapsed && <span>Settings</span>}
           </button>
         )}
 
@@ -377,23 +530,23 @@ export default function Sidebar({ page, onNavigate }: SidebarProps) {
           onClick={() => { useStore.getState().logout(); }}
           title="Sign out"
           className={cn(
-            "w-full flex items-center gap-3 px-[18px] py-[11px] rounded-[12px] text-sm font-medium transition-all duration-200",
+            "w-full flex items-center gap-3 px-[18px] py-[13px] rounded-[12px] text-[15px] font-medium transition-all duration-200",
             bottomHover,
           )}
         >
-          <LogOut size={15} className="flex-shrink-0" />
-          {!sidebarCollapsed && <span className="text-xs">Sign Out</span>}
+          <LogOut size={19} className="flex-shrink-0" />
+          {!sidebarCollapsed && <span>Sign Out</span>}
         </button>
 
         {/* Collapse toggle */}
         <button
           onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
           className={cn(
-            "w-full flex items-center justify-center py-[9px] rounded-[12px] transition-all duration-200",
+            "w-full flex items-center justify-center py-[11px] rounded-[12px] transition-all duration-200",
             bottomHover,
           )}
         >
-          {sidebarCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+          {sidebarCollapsed ? <ChevronRight size={17} /> : <ChevronLeft size={17} />}
         </button>
       </div>
 

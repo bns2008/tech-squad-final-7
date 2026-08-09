@@ -289,7 +289,7 @@ export default function MigratePage({ onNavigate }: { onNavigate: (p: string) =>
   const baseName = `${sourceDialect}_to_${targetDialect}`;
 
   return (
-    <div className="w-full max-w-6xl mx-auto px-1">
+    <div className="w-full px-1">
 
       {/* ── Header ── */}
       <div className="flex items-start justify-between mb-8">

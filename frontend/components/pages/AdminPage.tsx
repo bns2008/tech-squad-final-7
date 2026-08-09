@@ -31,8 +31,8 @@ function StatCard({ label, value, detail, icon: Icon, tone }: {
         <Activity size={13} className="text-[var(--text-subtle)]" />
       </div>
       <p className="text-2xl font-bold text-[var(--text)] mt-4 truncate">{value}</p>
-      <p className="text-xs font-semibold text-[var(--text-muted)] mt-1">{label}</p>
-      {detail && <p className="text-[10px] text-[var(--text-subtle)] mt-1 truncate">{detail}</p>}
+      <p className="text-sm font-semibold text-[var(--text-muted)] mt-1">{label}</p>
+      {detail && <p className="text-xs text-[var(--text-subtle)] mt-1 truncate">{detail}</p>}
     </motion.div>
   );
 }
@@ -298,7 +298,7 @@ export default function AdminPage() {
             <div className="flex items-center gap-2 overflow-x-auto">
               {(["all","free","pro","active","suspended"] as UserFilter[]).map(f => (
                 <button key={f} onClick={() => setFilter(f)}
-                  className={cn("px-3 py-2 rounded-lg text-xs font-semibold whitespace-nowrap",
+                  className={cn("px-3.5 py-2 rounded-lg text-sm font-semibold whitespace-nowrap",
                     filter === f ? "bg-[var(--primary)] text-white" : "bg-[var(--card)] border border-[var(--border)] text-[var(--text-muted)]")}>
                   {f.charAt(0).toUpperCase() + f.slice(1)}
                 </button>
@@ -311,7 +311,7 @@ export default function AdminPage() {
                 <thead>
                   <tr className="border-b border-[var(--border)]">
                     {["User","Plan","Status","Projects","Conversions","Last Login","Action"].map(h => (
-                      <th key={h} className="px-5 py-3 text-left text-[10px] uppercase tracking-wider font-bold text-[var(--text-muted)]">{h}</th>
+                      <th key={h} className="px-5 py-3.5 text-left text-xs uppercase tracking-wider font-bold text-[var(--text-muted)]">{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -325,28 +325,28 @@ export default function AdminPage() {
                       className="border-b border-[var(--border)] last:border-none hover:bg-[var(--surface)]">
                       <td className="px-5 py-3.5">
                         <div className="flex items-center gap-3 text-left">
-                          <span className="w-8 h-8 rounded-full bg-[var(--primary-light)] flex items-center justify-center text-xs font-bold text-[var(--primary)]">
+                          <span className="w-9 h-9 rounded-full bg-[var(--primary-light)] flex items-center justify-center text-sm font-bold text-[var(--primary)]">
                             {initials(u.full_name)}
                           </span>
                           <span>
                             <strong className="block text-sm text-[var(--text)]">{u.full_name}</strong>
-                            <small className="block text-[10px] text-[var(--text-muted)]">{u.email}</small>
+                            <small className="block text-xs text-[var(--text-muted)]">{u.email}</small>
                           </span>
                         </div>
                       </td>
                       <td className="px-5">
-                        <span className={cn("badge text-[10px]", u.plan === "pro" ? "bg-amber-50 dark:bg-amber-500/10 text-amber-600" : "badge-gray")}>
+                        <span className={cn("badge text-xs", u.plan === "pro" ? "bg-amber-50 dark:bg-amber-500/10 text-amber-600" : "badge-gray")}>
                           {u.plan === "pro" ? "Pro" : "Free"}
                         </span>
                       </td>
                       <td className="px-5">
-                        <span className={cn("badge text-[10px]", u.is_active ? "badge-success" : "badge-danger")}>
+                        <span className={cn("badge text-xs", u.is_active ? "badge-success" : "badge-danger")}>
                           {u.is_active ? "Active" : "Suspended"}
                         </span>
                       </td>
                       <td className="px-5 text-sm text-[var(--text-muted)]">{u.project_count}</td>
                       <td className="px-5 text-sm text-[var(--text-muted)]">{u.conversions_used_this_month} used</td>
-                      <td className="px-5 text-xs text-[var(--text-muted)]">{formatDate(u.last_login)}</td>
+                      <td className="px-5 text-sm text-[var(--text-muted)]">{formatDate(u.last_login)}</td>
                       <td className="px-5">
                         <div className="flex gap-1">
                           <button title="View user"
@@ -395,7 +395,7 @@ export default function AdminPage() {
                   <thead>
                     <tr className="border-b border-[var(--border)]">
                       {["Project","Owner","DB Type","Files","Created","Action"].map(h => (
-                        <th key={h} className="px-5 py-3 text-left text-[10px] uppercase tracking-wider font-bold text-[var(--text-muted)]">{h}</th>
+                        <th key={h} className="px-5 py-3.5 text-left text-xs uppercase tracking-wider font-bold text-[var(--text-muted)]">{h}</th>
                       ))}
                     </tr>
                   </thead>
@@ -408,14 +408,14 @@ export default function AdminPage() {
                           <tr key={p.id} className="border-b border-[var(--border)] last:border-none hover:bg-[var(--surface)]">
                             <td className="px-5 py-3.5">
                               <p className="font-semibold text-sm text-[var(--text)]">{p.name}</p>
-                              <p className="text-[10px] text-[var(--text-muted)]">{p.description || "—"}</p>
+                              <p className="text-xs text-[var(--text-muted)]">{p.description || "—"}</p>
                             </td>
-                            <td className="px-5 text-xs text-[var(--text-muted)]">
+                            <td className="px-5 text-sm text-[var(--text-muted)]">
                               {owner ? <><span className="block font-medium text-[var(--text)]">{owner.full_name}</span><span>{owner.email}</span></> : `User #${p.user_id}`}
                             </td>
-                            <td className="px-5 text-xs text-[var(--text-muted)]">{p.db_type}</td>
+                            <td className="px-5 text-sm text-[var(--text-muted)]">{p.db_type}</td>
                             <td className="px-5 text-sm text-[var(--text-muted)]">{(p.files as any[]).length}</td>
-                            <td className="px-5 text-xs text-[var(--text-muted)]">{formatDate(p.created_at)}</td>
+                            <td className="px-5 text-sm text-[var(--text-muted)]">{formatDate(p.created_at)}</td>
                             <td className="px-5">
                               <button onClick={() => handleDeleteProject(p.id)} className="icon-button text-red-500" title="Delete project">
                                 <Trash2 size={14} />
@@ -484,15 +484,15 @@ function UserDetail({ user, projects, adminId, onBack, onSuspend, onPlanChange, 
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-xl font-bold text-[var(--text)]">{user.full_name}</h1>
-            <span className={cn("badge text-[10px]", user.plan === "pro" ? "bg-amber-50 dark:bg-amber-500/10 text-amber-600" : "badge-gray")}>
+            <span className={cn("badge text-xs", user.plan === "pro" ? "bg-amber-50 dark:bg-amber-500/10 text-amber-600" : "badge-gray")}>
               {user.plan === "pro" ? "Pro" : "Free"}
             </span>
-            <span className={cn("badge text-[10px]", user.is_active ? "badge-success" : "badge-danger")}>
+            <span className={cn("badge text-xs", user.is_active ? "badge-success" : "badge-danger")}>
               {user.is_active ? "Active" : "Suspended"}
             </span>
           </div>
           <p className="text-sm text-[var(--text-muted)] mt-1">{user.email}</p>
-          <p className="text-xs text-[var(--text-subtle)] mt-0.5">Joined {formatDate(user.created_at)} · Last login {formatDate(user.last_login)}</p>
+          <p className="text-sm text-[var(--text-subtle)] mt-0.5">Joined {formatDate(user.created_at)} · Last login {formatDate(user.last_login)}</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <button onClick={onSuspend} className="btn-ghost">
@@ -506,10 +506,10 @@ function UserDetail({ user, projects, adminId, onBack, onSuspend, onPlanChange, 
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <div className="card p-4"><FolderOpen size={15} className="text-[var(--primary)] mb-2" /><p className="text-lg font-bold text-[var(--text)]">{user.project_count}</p><p className="text-xs text-[var(--text-muted)]">Projects</p></div>
-        <div className="card p-4"><FileCode size={15} className="text-[var(--primary)] mb-2" /><p className="text-lg font-bold text-[var(--text)]">{user.conversion_count}</p><p className="text-xs text-[var(--text-muted)]">Total Conversions</p></div>
-        <div className="card p-4"><TrendingUp size={15} className="text-[var(--primary)] mb-2" /><p className="text-lg font-bold text-[var(--text)]">{user.conversions_used_this_month}</p><p className="text-xs text-[var(--text-muted)]">Used This Month</p></div>
-        <div className="card p-4"><UserRound size={15} className="text-[var(--primary)] mb-2" /><p className="text-lg font-bold text-[var(--text)] capitalize">{user.role}</p><p className="text-xs text-[var(--text-muted)]">Role</p></div>
+        <div className="card p-4"><FolderOpen size={16} className="text-[var(--primary)] mb-2" /><p className="text-xl font-bold text-[var(--text)]">{user.project_count}</p><p className="text-sm font-medium text-[var(--text-muted)]">Projects</p></div>
+        <div className="card p-4"><FileCode size={16} className="text-[var(--primary)] mb-2" /><p className="text-xl font-bold text-[var(--text)]">{user.conversion_count}</p><p className="text-sm font-medium text-[var(--text-muted)]">Total Conversions</p></div>
+        <div className="card p-4"><TrendingUp size={16} className="text-[var(--primary)] mb-2" /><p className="text-xl font-bold text-[var(--text)]">{user.conversions_used_this_month}</p><p className="text-sm font-medium text-[var(--text-muted)]">Used This Month</p></div>
+        <div className="card p-4"><UserRound size={16} className="text-[var(--primary)] mb-2" /><p className="text-xl font-bold text-[var(--text)] capitalize">{user.role}</p><p className="text-sm font-medium text-[var(--text-muted)]">Role</p></div>
       </div>
 
       {/* Tabs */}
@@ -557,14 +557,14 @@ function UserDetail({ user, projects, adminId, onBack, onSuspend, onPlanChange, 
             </div>
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Plan</label>
+                <label className="block text-sm font-semibold text-[var(--text-muted)] mb-1.5">Plan</label>
                 <select value={user.plan} onChange={e => onPlanChange(e.target.value as "free" | "pro")} className="admin-select">
                   <option value="free">Free</option>
                   <option value="pro">Pro</option>
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">Role</label>
+                <label className="block text-sm font-semibold text-[var(--text-muted)] mb-1.5">Role</label>
                 <select value={user.role} onChange={e => onRoleChange(e.target.value as "user" | "admin")} className="admin-select">
                   <option value="user">User</option>
                   <option value="admin">Admin</option>
@@ -572,9 +572,9 @@ function UserDetail({ user, projects, adminId, onBack, onSuspend, onPlanChange, 
               </div>
               <div className="flex items-center gap-3 pt-1">
                 <button onClick={onResetConversions} className="btn-ghost text-sm">
-                  <RefreshCw size={13} /> Reset Monthly Conversions
+                  <RefreshCw size={14} /> Reset Monthly Conversions
                 </button>
-                <span className="text-xs text-[var(--text-muted)]">{user.conversions_used_this_month} used</span>
+                <span className="text-sm text-[var(--text-muted)]">{user.conversions_used_this_month} used</span>
               </div>
             </div>
           </div>
@@ -595,15 +595,15 @@ function UserDetail({ user, projects, adminId, onBack, onSuspend, onPlanChange, 
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <h3 className="font-bold text-[var(--text)]">{p.name}</h3>
-                    <p className="text-xs text-[var(--text-muted)] mt-0.5">{p.db_type} · {(p.files as any[]).length} files</p>
-                    {p.description && <p className="text-xs text-[var(--text-subtle)] mt-1">{p.description}</p>}
+                    <p className="text-sm text-[var(--text-muted)] mt-0.5">{p.db_type} · {(p.files as any[]).length} files</p>
+                    {p.description && <p className="text-sm text-[var(--text-subtle)] mt-1">{p.description}</p>}
                   </div>
                   <button onClick={() => onDeleteProject(p.id)} className="icon-button text-red-500 flex-shrink-0" title="Delete">
                     <Trash2 size={14} />
                   </button>
                 </div>
                 <div className="divider my-3" />
-                <div className="flex justify-between text-xs text-[var(--text-muted)]">
+                <div className="flex justify-between text-sm text-[var(--text-muted)]">
                   <span>{(p.files as any[]).filter((f: any) => f.status === "completed").length} completed</span>
                   <span>Created {formatDate(p.created_at)}</span>
                 </div>
@@ -637,7 +637,7 @@ function GeneratedFilesPanel({ files }: { files: any[] }) {
       <div className="card overflow-hidden">
         <div className="px-5 py-4 border-b border-[var(--border)]">
           <h2 className="font-bold text-[var(--text)]">Generated SQL, TXT, and JSON</h2>
-          <p className="text-xs text-[var(--text-muted)] mt-1">All files generated by this user across all projects.</p>
+          <p className="text-sm text-[var(--text-muted)] mt-1">All files generated by this user across all projects.</p>
         </div>
 
         {localFiles.length === 0 ? (
@@ -653,20 +653,20 @@ function GeneratedFilesPanel({ files }: { files: any[] }) {
               return (
                 <div key={f.id ?? i} className="flex items-center gap-3 px-5 py-3.5 hover:bg-[var(--surface)] transition-colors group">
                   {/* Icon */}
-                  <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center flex-shrink-0">
-                    <FileCode size={14} className="text-emerald-600" />
+                  <div className="w-9 h-9 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center flex-shrink-0">
+                    <FileCode size={16} className="text-emerald-600" />
                   </div>
 
                   {/* Info */}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-[var(--text)] truncate">{f.name}</p>
-                    <p className="text-[10px] text-[var(--text-muted)]">
+                    <p className="text-xs text-[var(--text-muted)]">
                       {f.projectName} · {f.status}{f.stats ? ` · ${f.stats.tables ?? 0} tables` : ""}
                     </p>
                   </div>
 
                   {/* Status badge */}
-                  <span className={cn("badge text-[9px] flex-shrink-0 mr-2",
+                  <span className={cn("badge text-xs flex-shrink-0 mr-2",
                     f.status === "completed" ? "badge-success" :
                     f.status === "failed"    ? "badge-danger"  : "badge-gray")}>
                     {f.status}
@@ -719,40 +719,40 @@ function GeneratedFilesPanel({ files }: { files: any[] }) {
               <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-[var(--border)]">
                 <div>
                   <h3 className="font-bold text-[var(--text)]">{inspecting.name}</h3>
-                  <p className="text-xs text-[var(--text-muted)] mt-0.5">
+                  <p className="text-sm text-[var(--text-muted)] mt-0.5">
                     {inspecting.projectName} · {inspecting.stats?.tables ?? 0} tables
                   </p>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <button
                     onClick={() => { downloadText(inspecting.sql, `${inspecting.name?.replace(/\.[^.]+$/, "")}.sql`); }}
-                    className="btn-ghost text-xs px-3 py-1.5"
+                    className="btn-ghost text-sm px-3 py-1.5"
                     title="Download SQL"
                   >
-                    <Download size={12} /> SQL
+                    <Download size={14} /> SQL
                   </button>
                   <button
                     onClick={() => { downloadText(inspecting.sql, `${inspecting.name?.replace(/\.[^.]+$/, "")}.txt`); }}
-                    className="btn-ghost text-xs px-3 py-1.5"
+                    className="btn-ghost text-sm px-3 py-1.5"
                     title="Download TXT"
                   >
-                    <FileText size={12} /> TXT
+                    <FileText size={14} /> TXT
                   </button>
                   <button
                     onClick={() => { downloadJSON({ filename: inspecting.name, sql: inspecting.sql, stats: inspecting.stats }, `${inspecting.name?.replace(/\.[^.]+$/, "")}.json`); }}
-                    className="btn-ghost text-xs px-3 py-1.5"
+                    className="btn-ghost text-sm px-3 py-1.5"
                     title="Download JSON"
                   >
-                    <FileJson size={12} /> JSON
+                    <FileJson size={14} /> JSON
                   </button>
                   <button onClick={() => setInspecting(null)} className="icon-button ml-1">
-                    <X size={15} />
+                    <X size={16} />
                   </button>
                 </div>
               </div>
 
               {/* SQL content */}
-              <pre className="max-h-[60vh] overflow-auto p-5 code-font text-xs leading-6 text-[var(--text)] bg-[var(--surface)] whitespace-pre-wrap">
+              <pre className="max-h-[60vh] overflow-auto p-5 code-font text-sm leading-6 text-[var(--text)] bg-[var(--surface)] whitespace-pre-wrap">
                 {inspecting.sql}
               </pre>
             </motion.div>
