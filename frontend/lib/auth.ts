@@ -67,6 +67,7 @@ function backendToFrontendUser(bu: {
       renewsAt: Date.now() + 30 * 24 * 60 * 60 * 1000,
       // Restore real usage count from DB so dashboard stats are correct
       conversionsUsedThisMonth: bu.conversions_used_this_month,
+      aiGenerationsUsedThisMonth: 0, // Initialize AI generations to 0
       lastResetMonth: new Date().toISOString().slice(0, 7),
     },
   };

@@ -7,7 +7,7 @@ import {
 import { useState } from "react";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
-import { canUsePlayground } from "@/lib/subscription";
+import { canUsePlayground, aiGenerationsLeft } from "@/lib/subscription";
 
 interface SidebarProps {
   page: string;
@@ -76,7 +76,9 @@ function NavBtn({
 export default function Sidebar({ page, onNavigate }: SidebarProps) {
   const { user, sidebarCollapsed, setSidebarCollapsed, projects: allProjects, theme, getSubscription } = useStore();
   const activeNav = `${activeNavBase} ${activeTextColor(theme)}`;
-  const isPro = canUsePlayground(getSubscription());
+  const subscription = getSubscription();
+  const isPro = canUsePlayground(subscription);
+  const aiCreditsLeft = aiGenerationsLeft(subscription);
 
   const [mobileOpen, setMobileOpen] = useState(true);
   const [toolsOpen, setToolsOpen] = useState(
@@ -346,6 +348,37 @@ export default function Sidebar({ page, onNavigate }: SidebarProps) {
 
       {/* ── Bottom: settings + sign out + collapse ────────────────────────── */}
       <div className="border-t border-[var(--border)] px-[10px] py-3 space-y-0.5 flex-shrink-0">
+
+        {/* AI Credits Display */}
+        {!sidebarCollapsed && (
+          <div className="px-[10px] py-2 mb-2 rounded-lg bg-[var(--card)] border border-[var(--border)]">
+            <div className="flex items-center gap-2 mb-1">
+              <Sparkles size={14} className="text-[var(--primary)]" />
+              <span className="text-[11px] font-semibold text-[var(--text)]">AI Credits</span>
+            </div>
+            <div className="flex items-center justify-between">
+              {isPro ? (
+                <span className="text-[13px] font-bold text-[var(--primary)]">Unlimited</span>
+              ) : (
+                <span className="text-[13px] font-bold text-[var(--text)]">{aiCreditsLeft}</span>
+              )}
+              {!isPro && aiCreditsLeft <= 10 && aiCreditsLeft > 0 && (
+                <span className="text-[10px] text-amber-500 font-medium">Low</span>
+              )}
+              {!isPro && aiCreditsLeft === 0 && (
+                <span className="text-[10px] text-red-500 font-medium">Exhausted</span>
+              )}
+            </div>
+            {!isPro && aiCreditsLeft > 0 && (
+              <div className="mt-1.5 h-1.5 bg-[var(--surface)] rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-[var(--primary)] transition-all duration-300"
+                  style={{ width: `${(aiCreditsLeft / 70) * 100}%` }}
+                />
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Settings */}
         {page !== "admin" && (

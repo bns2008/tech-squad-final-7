@@ -1,17 +1,19 @@
 "use client";
 import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Camera, Mail, User, Shield, CalendarDays, CheckCircle2, Clock, ArrowRight, X } from "lucide-react";
+import { Camera, Mail, User, Shield, CalendarDays, CheckCircle2, Clock, ArrowRight, X, Sparkles } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { updateProfile } from "@/lib/auth";
 import { initials, cn } from "@/lib/utils";
-import { getPlan } from "@/lib/subscription";
+import { getPlan, aiGenerationsLeft, canUsePlayground } from "@/lib/subscription";
 import toast from "react-hot-toast";
 
 export default function ProfilePage({ onNavigate }: { onNavigate: (p: string) => void }) {
   const { user, setUser, getSubscription } = useStore();
   const sub  = getSubscription();
   const plan = getPlan(sub);
+  const isPro = canUsePlayground(sub);
+  const aiCreditsLeft = aiGenerationsLeft(sub);
 
   const [name, setName]     = useState(user?.name ?? "");
   const [avatar, setAvatar] = useState<string | null>(user?.avatar ?? null);
@@ -247,6 +249,43 @@ export default function ProfilePage({ onNavigate }: { onNavigate: (p: string) =>
                   <span className="text-sm font-semibold text-[var(--text)]">{value}</span>
                 </div>
               ))}
+            </div>
+
+            {/* AI Credits Section */}
+            <div className="mt-5 pt-5 border-t border-[var(--border)]">
+              <div className="flex items-center gap-2 mb-3">
+                <Sparkles size={15} className="text-[var(--primary)]" />
+                <span className="text-sm font-semibold text-[var(--text)]">AI Credits</span>
+              </div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-2xl font-bold text-[var(--text)]">
+                  {isPro ? "Unlimited" : aiCreditsLeft}
+                </span>
+                {!isPro && (
+                  <span className="text-xs text-[var(--text-subtle)]">/ 70 per month</span>
+                )}
+              </div>
+              {!isPro && (
+                <div className="h-2 bg-[var(--surface)] rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-[var(--primary)] transition-all duration-300"
+                    style={{ width: `${(aiCreditsLeft / 70) * 100}%` }}
+                  />
+                </div>
+              )}
+              {!isPro && aiCreditsLeft <= 10 && aiCreditsLeft > 0 && (
+                <p className="text-xs text-amber-500 mt-2 font-medium">
+                  Low credits remaining. Consider upgrading to Pro.
+                </p>
+              )}
+              {!isPro && aiCreditsLeft === 0 && (
+                <button
+                  onClick={() => onNavigate("pricing")}
+                  className="mt-2 w-full btn-primary text-xs py-2"
+                >
+                  Upgrade to Pro for Unlimited
+                </button>
+              )}
             </div>
 
             <div className="mt-5 pt-5 border-t border-[var(--border)] flex flex-col gap-2.5">

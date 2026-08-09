@@ -9,6 +9,7 @@ export const PLANS: Record<PlanId, Plan> = {
     conversionsPerMonth: 5,
     maxProjects: 3,
     maxImagesPerProject: 5,
+    aiGenerationsPerMonth: 70, // 70 AI SQL generation credits for free users
     zipExport: false,
     priorityQueue: false,
     versionHistory: false,
@@ -22,6 +23,7 @@ export const PLANS: Record<PlanId, Plan> = {
     conversionsPerMonth: 50,
     maxProjects: 25,
     maxImagesPerProject: 25,
+    aiGenerationsPerMonth: 1000, // Unlimited essentially for Pro users
     zipExport: true,
     priorityQueue: true,
     versionHistory: true,
@@ -44,6 +46,7 @@ export function defaultSubscription(): Subscription {
     startedAt: now,
     renewsAt: now + 30 * 24 * 60 * 60 * 1000,
     conversionsUsedThisMonth: 0,
+    aiGenerationsUsedThisMonth: 0,
     lastResetMonth: currentMonthKey(),
   };
 }
@@ -52,7 +55,7 @@ export function defaultSubscription(): Subscription {
 export function maybeResetMonthly(sub: Subscription): Subscription {
   const now = currentMonthKey();
   if (sub.lastResetMonth !== now) {
-    return { ...sub, conversionsUsedThisMonth: 0, lastResetMonth: now };
+    return { ...sub, conversionsUsedThisMonth: 0, aiGenerationsUsedThisMonth: 0, lastResetMonth: now };
   }
   return sub;
 }
@@ -95,4 +98,22 @@ export function getPlan(sub: Subscription): Plan {
 
 export function canUsePlayground(sub: Subscription): boolean {
   return sub.planId === "pro";
+}
+
+// ── AI Generation credits helpers ───────────────────────────────────────────────
+export function canGenerateAI(sub: Subscription): boolean {
+  const s = maybeResetMonthly(sub);
+  const plan = PLANS[s.planId];
+  return s.aiGenerationsUsedThisMonth < (s.aiGenerationsLimitOverride ?? plan.aiGenerationsPerMonth);
+}
+
+export function aiGenerationsLeft(sub: Subscription): number {
+  const s = maybeResetMonthly(sub);
+  const plan = PLANS[s.planId];
+  return Math.max(0, (s.aiGenerationsLimitOverride ?? plan.aiGenerationsPerMonth) - s.aiGenerationsUsedThisMonth);
+}
+
+export function incrementAIGenerations(sub: Subscription): Subscription {
+  const s = maybeResetMonthly(sub);
+  return { ...s, aiGenerationsUsedThisMonth: s.aiGenerationsUsedThisMonth + 1 };
 }

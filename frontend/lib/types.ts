@@ -16,6 +16,7 @@ export interface Plan {
   conversionsPerMonth: number;
   maxProjects: number;
   maxImagesPerProject: number;
+  aiGenerationsPerMonth: number; // AI SQL generation credits
   zipExport: boolean;
   priorityQueue: boolean;
   versionHistory: boolean;
@@ -28,10 +29,12 @@ export interface Subscription {
   startedAt: number;
   renewsAt: number;
   conversionsUsedThisMonth: number;
+  aiGenerationsUsedThisMonth: number; // AI SQL generation credits used
   lastResetMonth: string; // "YYYY-MM"
   conversionLimitOverride?: number;
   projectLimitOverride?: number;
   imageLimitOverride?: number;
+  aiGenerationsLimitOverride?: number;
 }
 
 // ── User ──────────────────────────────────────────────────────────────────────

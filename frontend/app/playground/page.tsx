@@ -27,11 +27,13 @@ import {
   Share2,
   Layers,
   GitBranch,
+  Sparkles,
+  Loader2,
 } from "lucide-react";
 import { cn, downloadText } from "@/lib/utils";
 import { parseSQLSchema } from "@/lib/sqlParser";
 import { useStore } from "@/lib/store";
-import { canUsePlayground } from "@/lib/subscription";
+import { canUsePlayground, canGenerateAI, aiGenerationsLeft } from "@/lib/subscription";
 import toast from "react-hot-toast";
 import ERDiagramModal from "@/components/ERDiagramModal";
 import type { DiagramType } from "@/components/ERDiagramModal";
@@ -273,9 +275,14 @@ function PlaygroundLocked() {
 
 // ── Main Component ─────────────────────────────────────────────────────────────
 export default function PlaygroundPage() {
-  const { theme, playgroundInitialSQL, setPlaygroundInitialSQL, getSubscription } = useStore();
-  const isPro = canUsePlayground(getSubscription());
+  const { theme, playgroundInitialSQL, setPlaygroundInitialSQL, getSubscription, incrementAIGenerations } = useStore();
+  const subscription = getSubscription();
+  const isPro = canUsePlayground(subscription);
+  const canUseAI = canGenerateAI(subscription);
+  const creditsLeft = aiGenerationsLeft(subscription);
 
+  // Lock playground for Pro users only (Monaco editor, diagrams, etc.)
+  // Free users can use AI SQL Generator on the Generate page
   if (!isPro) {
     return <PlaygroundLocked />;
   }
@@ -294,6 +301,13 @@ export default function PlaygroundPage() {
   const diagramBtnRef = useRef<HTMLButtonElement>(null);
   const editorRef = useRef<unknown>(null);
   const monacoRef = useRef<unknown>(null);
+  
+  // AI SQL Generator state
+  const [aiPanelOpen, setAiPanelOpen] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [aiGenerating, setAiGenerating] = useState(false);
+  const [aiGeneratedSQL, setAiGeneratedSQL] = useState("");
+  const [aiError, setAiError] = useState<string | null>(null);
 
   const monacoTheme = theme === "dark" ? "playground-dark" : "playground-light";
 
@@ -535,6 +549,86 @@ export default function PlaygroundPage() {
     }).filter(Boolean);
   }, []);
 
+  // ── AI SQL Generation ─────────────────────────────────────────────────────────
+  const generateSQL = useCallback(async () => {
+    if (!aiPrompt.trim()) {
+      toast.error("Please describe what you want to generate");
+      return;
+    }
+
+    // Check credits
+    if (!canUseAI) {
+      toast.error("You've used all your AI generation credits. Upgrade to Pro for unlimited access!");
+      // Trigger upgrade dialog
+      window.dispatchEvent(new CustomEvent("navigate", { detail: "pricing" }));
+      return;
+    }
+
+    setAiGenerating(true);
+    setAiError(null);
+    setAiGeneratedSQL("");
+
+    try {
+      const currentSQL = (editorRef.current as any)?.getValue?.() ?? sql;
+      const res = await fetch("/api/assistant", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode: "generate",
+          input: aiPrompt,
+          schema: currentSQL,
+        }),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to generate SQL (${res.status})`);
+      }
+
+      const data = await res.json();
+      setAiGeneratedSQL(data.sql || "");
+      
+      // Increment AI generation credits
+      incrementAIGenerations();
+      
+      toast.success("SQL generated successfully!");
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Failed to generate SQL";
+      setAiError(errorMessage);
+      toast.error(errorMessage);
+    } finally {
+      setAiGenerating(false);
+    }
+  }, [aiPrompt, sql, canUseAI, incrementAIGenerations]);
+
+  const insertGeneratedSQL = useCallback(() => {
+    if (!aiGeneratedSQL.trim()) return;
+    
+    const editor = editorRef.current as any;
+    if (editor) {
+      const currentSQL = editor.getValue();
+      // Insert at cursor position or append at end
+      const position = editor.getPosition();
+      if (position) {
+        editor.executeEdits("ai-insert", [
+          {
+            range: new (monacoRef.current as any).Range(
+              position.lineNumber,
+              position.column,
+              position.lineNumber,
+              position.column
+            ),
+            text: aiGeneratedSQL + "\n",
+          },
+        ]);
+      } else {
+        editor.setValue(currentSQL + "\n" + aiGeneratedSQL);
+      }
+      setSql(editor.getValue());
+      toast.success("SQL inserted into editor");
+    }
+  }, [aiGeneratedSQL]);
+
   // ── Render ────────────────────────────────────────────────────────────────
   const currentTables = extractTables(sql);
 
@@ -600,6 +694,17 @@ export default function PlaygroundPage() {
           >
             <Wand2 size={13} />
             <span>Format SQL</span>
+          </motion.button>
+
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.96 }}
+            onClick={() => setAiPanelOpen(!aiPanelOpen)}
+            className={cn("btn-ghost btn-sm gap-1.5", aiPanelOpen && "bg-[var(--surface)]")}
+            title="AI SQL Generator"
+          >
+            <Sparkles size={13} />
+            <span>AI Generate</span>
           </motion.button>
 
           {/* Diagram Dropdown Button */}
@@ -768,7 +873,160 @@ export default function PlaygroundPage() {
 
       {/* ── Editor + Sidebars + Output ─────────────────────────────────────────────────── */}
       <div className="flex flex-1 overflow-hidden relative" style={{ minHeight: 0, minWidth: 0 }}>
-        
+
+        {/* ── AI SQL Generator Panel ─────────────────────────────────────────────── */}
+        <AnimatePresence>
+          {aiPanelOpen && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2, ease: "easeInOut" }}
+              className="border-b border-[var(--border)] bg-[var(--card)] overflow-hidden"
+            >
+              <div className="p-4 space-y-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <Sparkles size={14} className="text-[var(--primary)]" />
+                  <span className="text-xs font-bold text-[var(--text)]">AI SQL Query Generator</span>
+                  <div className="ml-auto flex items-center gap-1.5">
+                    {!isPro && (
+                      <span className="text-[10px] text-[var(--text-subtle)]">
+                        {creditsLeft} credits left
+                      </span>
+                    )}
+                    {isPro && (
+                      <span className="text-[10px] text-[var(--primary)] font-medium">
+                        Unlimited
+                      </span>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={aiPrompt}
+                    onChange={(e) => setAiPrompt(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && generateSQL()}
+                    placeholder="e.g., 'Show all students enrolled in Computer Science course'"
+                    className="flex-1 px-3 py-2 rounded-lg text-sm border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] placeholder:text-[var(--text-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/20 focus:border-[var(--primary)]"
+                    disabled={aiGenerating || !canUseAI}
+                  />
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.96 }}
+                    onClick={generateSQL}
+                    disabled={aiGenerating || !aiPrompt.trim() || !canUseAI}
+                    className="btn-primary btn-sm gap-1.5 min-w-[100px]"
+                  >
+                    {aiGenerating ? (
+                      <>
+                        <Loader2 size={13} className="animate-spin" />
+                        <span>Generating...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles size={13} />
+                        <span>Generate</span>
+                      </>
+                    )}
+                  </motion.button>
+                </div>
+
+                {!isPro && creditsLeft <= 10 && creditsLeft > 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex items-start gap-2 p-2 rounded-lg bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20"
+                  >
+                    <Zap size={14} className="text-amber-500 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="text-xs text-amber-700 dark:text-amber-400 font-medium">
+                        {creditsLeft} AI credits remaining
+                      </p>
+                      <p className="text-[10px] text-amber-600 dark:text-amber-500 mt-0.5">
+                        Upgrade to Pro for unlimited AI SQL generation
+                      </p>
+                    </div>
+                  </motion.div>
+                )}
+
+                {!isPro && creditsLeft === 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex items-start gap-2 p-2 rounded-lg bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20"
+                  >
+                    <XCircle size={14} className="text-red-500 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="text-xs text-red-700 dark:text-red-400 font-medium">
+                        No AI credits remaining
+                      </p>
+                      <button
+                        onClick={() => window.dispatchEvent(new CustomEvent("navigate", { detail: "pricing" }))}
+                        className="text-[10px] text-red-600 dark:text-red-500 mt-0.5 underline hover:no-underline"
+                      >
+                        Upgrade to Pro for unlimited access →
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+
+                {aiError && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex items-start gap-2 p-2 rounded-lg bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20"
+                  >
+                    <XCircle size={14} className="text-red-500 flex-shrink-0 mt-0.5" />
+                    <p className="text-xs text-red-600 dark:text-red-400">{aiError}</p>
+                  </motion.div>
+                )}
+
+                {aiGeneratedSQL && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="space-y-2"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-semibold text-[var(--text-subtle)] uppercase tracking-wider">
+                        Generated SQL
+                      </span>
+                      <div className="flex items-center gap-1">
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={insertGeneratedSQL}
+                          className="px-2 py-1 rounded-md text-[10px] font-medium bg-[var(--primary)] text-white hover:opacity-90 transition-opacity"
+                        >
+                          Insert to Editor
+                        </motion.button>
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => {
+                            navigator.clipboard.writeText(aiGeneratedSQL);
+                            toast.success("SQL copied to clipboard");
+                          }}
+                          className="px-2 py-1 rounded-md text-[10px] font-medium bg-[var(--surface)] text-[var(--text)] hover:bg-[var(--border)] transition-colors"
+                        >
+                          Copy
+                        </motion.button>
+                      </div>
+                    </div>
+                    <div className="rounded-lg p-3 bg-[var(--surface)] border border-[var(--border)] overflow-x-auto">
+                      <pre className="text-xs font-mono text-[var(--text)] whitespace-pre-wrap">
+                        {aiGeneratedSQL}
+                      </pre>
+                    </div>
+                  </motion.div>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* ── Monaco Editor area — always full width ───────────────────────── */}
         <motion.div
           initial={{ opacity: 0 }}

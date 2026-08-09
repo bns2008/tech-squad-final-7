@@ -7,10 +7,11 @@ import {
   AlertTriangle, ArrowRight, FileText, FileJson,
   Sparkles, ChevronDown, ChevronUp, Lightbulb,
   FolderOpen, Plus, X, Save, GitFork, Share2, Layers, Terminal,
+  Loader2, XCircle, Zap,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { parseSQLStats, downloadText, downloadJSON, genId, formatTime, cn } from "@/lib/utils";
-import { canConvert, conversionsLeft, canCreateProject } from "@/lib/subscription";
+import { canConvert, conversionsLeft, canCreateProject, canGenerateAI, aiGenerationsLeft } from "@/lib/subscription";
 import type { Project, DBType } from "@/lib/types";
 import UpgradeLimitDialog from "@/components/UpgradeLimitDialog";
 import dynamic from "next/dynamic";
@@ -116,10 +117,12 @@ interface GenerateResult {
 }
 
 export default function GeneratePage({ onNavigate }: { onNavigate: (p: string) => void }) {
-  const { getSubscription, incrementConversions, theme, user, projects, upsertProject, upsertFile, setActiveProject, setPlaygroundInitialSQL } = useStore();
+  const { getSubscription, incrementConversions, incrementAIGenerations, theme, user, projects, upsertProject, upsertFile, setActiveProject, setPlaygroundInitialSQL } = useStore();
   const sub = getSubscription();
   const ownerId = user?.id ?? "";
   const myProjects = projects.filter(p => p.ownerId === ownerId);
+  const canUseAI = canGenerateAI(sub);
+  const aiCreditsLeft = aiGenerationsLeft(sub);
 
   const [description, setDescription]   = useState("");
   const [selectedDb, setSelectedDb]     = useState("postgresql");
@@ -141,6 +144,13 @@ export default function GeneratePage({ onNavigate }: { onNavigate: (p: string) =
   const [saveProjectId, setSaveProjectId] = useState<string>("");
   const [newProjectName, setNewProjectName] = useState("");
   const [saving, setSaving]             = useState(false);
+
+  // AI SQL Generator state
+  const [aiPanelOpen, setAiPanelOpen] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [aiGenerating, setAiGenerating] = useState(false);
+  const [aiGeneratedSQL, setAiGeneratedSQL] = useState("");
+  const [aiError, setAiError] = useState<string | null>(null);
 
   const activeDb = DB_OPTIONS.find((d) => d.value === selectedDb) ?? DB_OPTIONS[0];
   const left = conversionsLeft(sub);
@@ -441,6 +451,58 @@ export default function GeneratePage({ onNavigate }: { onNavigate: (p: string) =
     onNavigate("project-detail");
   };
 
+  // ── AI SQL Generation ─────────────────────────────────────────────────────────
+  const generateAISQL = useCallback(async () => {
+    if (!aiPrompt.trim()) {
+      toast.error("Please describe what you want to generate");
+      return;
+    }
+
+    if (!canUseAI) {
+      toast.error("You've used all your AI generation credits. Upgrade to Pro for unlimited access!");
+      window.dispatchEvent(new CustomEvent("navigate", { detail: "pricing" }));
+      return;
+    }
+
+    setAiGenerating(true);
+    setAiError(null);
+    setAiGeneratedSQL("");
+
+    try {
+      const currentSQL = result?.sql || "";
+      const res = await fetch("/api/assistant", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode: "generate",
+          input: aiPrompt,
+          schema: currentSQL,
+        }),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to generate SQL (${res.status})`);
+      }
+
+      const data = await res.json();
+      setAiGeneratedSQL(data.sql || "");
+      
+      // Increment AI generation credits
+      console.log("Incrementing AI credits...");
+      incrementAIGenerations();
+      console.log("AI credits incremented");
+      
+      toast.success("SQL generated successfully!");
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Failed to generate SQL";
+      setAiError(errorMessage);
+      toast.error(errorMessage);
+    } finally {
+      setAiGenerating(false);
+    }
+  }, [aiPrompt, result?.sql, canUseAI, incrementAIGenerations]);
+
   return (
     <div className="w-full px-1">
 
@@ -458,16 +520,28 @@ export default function GeneratePage({ onNavigate }: { onNavigate: (p: string) =
             &nbsp;remaining this month.
           </p>
         </div>
-        {sub.planId !== "pro" && (
+        <div className="flex items-center gap-2">
           <button
-            onClick={() => onNavigate("pricing")}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold shrink-0
-              bg-gradient-to-r from-primary-600 to-primary-700 text-white
-              hover:shadow-lg hover:shadow-primary-500/25 transition-all"
+            onClick={() => setAiPanelOpen(!aiPanelOpen)}
+            className={cn(
+              "flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold shrink-0 transition-all",
+              aiPanelOpen ? "bg-[var(--primary)] text-white" : "bg-[var(--card)] text-[var(--text)] border border-[var(--border)] hover:bg-[var(--surface)]"
+            )}
           >
-            Upgrade to Pro <ArrowRight size={14} />
+            <Sparkles size={14} />
+            <span>AI SQL</span>
           </button>
-        )}
+          {sub.planId !== "pro" && (
+            <button
+              onClick={() => onNavigate("pricing")}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold shrink-0
+                bg-gradient-to-r from-primary-600 to-primary-700 text-white
+                hover:shadow-lg hover:shadow-primary-500/25 transition-all"
+            >
+              Upgrade to Pro <ArrowRight size={14} />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* ── Diagram Type Selector ── */}
@@ -501,6 +575,130 @@ export default function GeneratePage({ onNavigate }: { onNavigate: (p: string) =
           })}
         </div>
       </div>
+
+      {/* ── AI SQL Generator Panel ── */}
+      <AnimatePresence>
+        {aiPanelOpen && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2, ease: "easeInOut" }}
+            className="mb-6 border border-[var(--border)] rounded-xl bg-[var(--card)] overflow-hidden"
+          >
+            <div className="p-4 space-y-3">
+              <div className="flex items-center gap-2 mb-2">
+                <Sparkles size={14} className="text-[var(--primary)]" />
+                <span className="text-xs font-bold text-[var(--text)]">AI SQL Query Generator</span>
+                <div className="ml-auto flex items-center gap-1.5">
+                  {sub.planId === "pro" ? (
+                    <span className="text-[10px] text-[var(--primary)] font-medium">
+                      Unlimited
+                    </span>
+                  ) : (
+                    <span className="text-[10px] text-[var(--text-subtle)]">
+                      {aiCreditsLeft} credits left
+                    </span>
+                  )}
+                </div>
+              </div>
+              
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={aiPrompt}
+                  onChange={(e) => setAiPrompt(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && generateAISQL()}
+                  placeholder="e.g., 'Show all students enrolled in Computer Science course'"
+                  className="flex-1 px-3 py-2 rounded-lg text-sm border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] placeholder:text-[var(--text-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/20 focus:border-[var(--primary)]"
+                  disabled={aiGenerating || !canUseAI}
+                />
+                <button
+                  onClick={generateAISQL}
+                  disabled={aiGenerating || !aiPrompt.trim() || !canUseAI}
+                  className="btn-primary btn-sm gap-1.5 min-w-[100px]"
+                >
+                  {aiGenerating ? (
+                    <>
+                      <Loader2 size={13} className="animate-spin" />
+                      <span>Generating...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles size={13} />
+                      <span>Generate</span>
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {sub.planId !== "pro" && aiCreditsLeft <= 10 && aiCreditsLeft > 0 && (
+                <div className="flex items-start gap-2 p-2 rounded-lg bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20">
+                  <Zap size={14} className="text-amber-500 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-xs text-amber-700 dark:text-amber-400 font-medium">
+                      {aiCreditsLeft} AI credits remaining
+                    </p>
+                    <p className="text-[10px] text-amber-600 dark:text-amber-500 mt-0.5">
+                      Upgrade to Pro for unlimited AI SQL generation
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {sub.planId !== "pro" && aiCreditsLeft === 0 && (
+                <div className="flex items-start gap-2 p-2 rounded-lg bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20">
+                  <XCircle size={14} className="text-red-500 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-xs text-red-700 dark:text-red-400 font-medium">
+                      No AI credits remaining
+                    </p>
+                    <button
+                      onClick={() => onNavigate("pricing")}
+                      className="text-[10px] text-red-600 dark:text-red-500 mt-0.5 underline hover:no-underline"
+                    >
+                      Upgrade to Pro for unlimited access →
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {aiError && (
+                <div className="flex items-start gap-2 p-2 rounded-lg bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20">
+                  <XCircle size={14} className="text-red-500 flex-shrink-0 mt-0.5" />
+                  <p className="text-xs text-red-600 dark:text-red-400">{aiError}</p>
+                </div>
+              )}
+
+              {aiGeneratedSQL && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-semibold text-[var(--text-subtle)] uppercase tracking-wider">
+                      Generated SQL
+                    </span>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(aiGeneratedSQL);
+                          toast.success("SQL copied to clipboard");
+                        }}
+                        className="px-2 py-1 rounded-md text-[10px] font-medium bg-[var(--surface)] text-[var(--text)] hover:bg-[var(--border)] transition-colors"
+                      >
+                        Copy
+                      </button>
+                    </div>
+                  </div>
+                  <div className="rounded-lg p-3 bg-[var(--surface)] border border-[var(--border)] overflow-x-auto">
+                    <pre className="text-xs font-mono text-[var(--text)] whitespace-pre-wrap">
+                      {aiGeneratedSQL}
+                    </pre>
+                  </div>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ── Database Selector ── */}
       <div className="mb-6">

@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { User, Project, ProjectFile, ActivityLog, AdminUser, QuickConvertResult, Subscription } from "./types";
-import { defaultSubscription, maybeResetMonthly } from "./subscription";
+import { defaultSubscription, maybeResetMonthly, incrementAIGenerations as incrementAIGenerationsSub } from "./subscription";
 
 export interface AnalysisResult {
   id: string;
@@ -52,6 +52,7 @@ interface SubscriptionSlice {
   setSubscription: (s: Subscription) => void;
   upgradeToPro: () => void;
   incrementConversions: () => void;
+  incrementAIGenerations: () => void;
   getSubscription: () => Subscription; // always fresh (resets if new month)
 }
 
@@ -160,6 +161,21 @@ export const useStore = create<Store>()(
         set((state) => {
           const s = maybeResetMonthly(state.subscription);
           const updated = { ...s, conversionsUsedThisMonth: s.conversionsUsedThisMonth + 1 };
+          // Persist the incremented count to the backend so it survives logout/login
+          const userId = parseInt(state.user?.id ?? "", 10);
+          if (!isNaN(userId)) {
+            import("./api").then(({ apiIncrementConversions }) => {
+              apiIncrementConversions(userId).catch(() => {});
+            }).catch(() => {});
+          }
+          return { subscription: updated };
+        }),
+      incrementAIGenerations: () =>
+        set((state) => {
+          const s = maybeResetMonthly(state.subscription);
+          console.log("Before increment:", s.aiGenerationsUsedThisMonth);
+          const updated = incrementAIGenerationsSub(s);
+          console.log("After increment:", updated.aiGenerationsUsedThisMonth);
           // Persist the incremented count to the backend so it survives logout/login
           const userId = parseInt(state.user?.id ?? "", 10);
           if (!isNaN(userId)) {
