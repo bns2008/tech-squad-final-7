@@ -2,7 +2,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, FolderOpen, History, Settings, Shield,
-  ChevronLeft, ChevronRight, Database, LogOut, Plus, Sparkles, CreditCard, UserRound, X, Wand2, ArrowRightLeft, Wrench, ChevronDown, Terminal, Lock
+  ChevronLeft, ChevronRight, Database, LogOut, Plus, Sparkles, CreditCard, UserRound, X, Wand2, ArrowRightLeft, Wrench, ChevronDown, Terminal, Lock, Bot
 } from "lucide-react";
 import { useState } from "react";
 import { useStore } from "@/lib/store";
@@ -19,6 +19,7 @@ const toolsItems = [
   { id: "generate",      label: "Generate",      icon: Wand2,          badge: "Text → SQL"  },
   { id: "migrate",       label: "Migrator",      icon: ArrowRightLeft, badge: "SQL → SQL"   },
   { id: "playground",    label: "Playground",    icon: Terminal,       badge: "SQL Editor"  },
+  { id: "assistant",     label: "AI Assistant",  icon: Bot,            badge: "Ask AI"      },
 ];
 
 const mainNav = [
@@ -80,13 +81,13 @@ export default function Sidebar({ page, onNavigate }: SidebarProps) {
 
   const [mobileOpen, setMobileOpen] = useState(true);
   const [toolsOpen, setToolsOpen] = useState(
-    ["quick-convert", "generate", "migrate", "playground"].includes(page)
+    ["quick-convert", "generate", "migrate", "playground", "assistant"].includes(page)
   );
 
   const projects = allProjects.filter(p => p.ownerId === (user?.id ?? ""));
   const isAdmin = user?.role === "admin";
   const width = sidebarCollapsed ? 64 : 220;
-  const isToolPage = ["quick-convert", "generate", "migrate", "playground"].includes(page);
+  const isToolPage = ["quick-convert", "generate", "migrate", "playground", "assistant"].includes(page);
 
   const handleNavigate = (id: string) => {
     onNavigate(id);
@@ -277,6 +278,7 @@ export default function Sidebar({ page, onNavigate }: SidebarProps) {
           >
             <Icon size={16} className="flex-shrink-0" />
             {!sidebarCollapsed && <span className="truncate">{label}</span>}
+            {/* Project count badge */}
             {!sidebarCollapsed && id === "projects" && projects.length > 0 && (
               <span className={cn(
                 "ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded-full",
@@ -285,6 +287,13 @@ export default function Sidebar({ page, onNavigate }: SidebarProps) {
                   : "text-white bg-white/20"
               )}>
                 {projects.length}
+              </span>
+            )}
+            {/* Pro lock badge on History for free users */}
+            {!sidebarCollapsed && id === "history" && !isPro && (
+              <span className="ml-auto flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded"
+                style={{ background: "rgba(201,155,94,0.18)", color: "var(--warning)", border: "1px solid rgba(201,155,94,0.30)" }}>
+                <Lock size={8} /> Pro
               </span>
             )}
           </button>

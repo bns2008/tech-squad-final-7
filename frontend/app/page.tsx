@@ -24,6 +24,7 @@ import QuickConvertPage from "@/components/pages/QuickConvertPage";
 import GeneratePage from "@/components/pages/GeneratePage";
 import MigratePage from "@/components/pages/MigratePage";
 import PlaygroundPage from "@/app/playground/page";
+import AssistantPage from "@/components/pages/AssistantPage";
 import ProfilePage from "@/components/pages/ProfilePage";
 import UsagePage from "@/components/pages/UsagePage";
 
@@ -34,7 +35,7 @@ import { LayoutDashboard, FolderOpen, History, Settings, Shield } from "lucide-r
 const DatabaseScene = dynamic(() => import("@/components/ambient/DatabaseScene"), { ssr: false });
 
 type AuthPage = "login" | "register" | "forgot";
-type AppPage  = "dashboard" | "projects" | "project-detail" | "history" | "quick-convert" | "generate" | "migrate" | "playground" | "pricing" | "profile" | "usage" | "settings" | "admin";
+type AppPage  = "dashboard" | "projects" | "project-detail" | "history" | "quick-convert" | "generate" | "migrate" | "playground" | "assistant" | "pricing" | "profile" | "usage" | "settings" | "admin";
 
 export default function RootPage() {
   const { isAuthenticated, user, sidebarCollapsed } = useStore();
@@ -115,6 +116,7 @@ export default function RootPage() {
       case "generate":       return <GeneratePage onNavigate={navigate} />;
       case "migrate":        return <MigratePage onNavigate={navigate} />;
       case "playground":     return <PlaygroundPage />;
+      case "assistant":      return <AssistantPage onNavigate={navigate} />;
       case "pricing":        return <PricingPage />;
       case "profile":        return <ProfilePage onNavigate={navigate} />;
       case "settings":       return <SettingsPage onNavigate={navigate} />;

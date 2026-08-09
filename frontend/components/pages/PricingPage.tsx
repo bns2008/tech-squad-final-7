@@ -41,6 +41,7 @@ const FEATURE_ROWS = [
   { label: "Monaco code editor",        free: true,   pro: true },
   { label: "SQL / TXT / JSON export",   free: true,   pro: true },
   { label: "SQL Playground",            free: false,  pro: true },
+  { label: "History & audit log",       free: false,  pro: true },
   { label: "ZIP project export",        free: false,  pro: true },
   { label: "Version history",           free: false,  pro: true },
   { label: "Priority queue",            free: false,  pro: true },
@@ -234,7 +235,7 @@ export default function PricingPage() {
                 {f}
               </li>
             ))}
-            {["SQL Playground", "ZIP export", "Version history", "Priority queue"].map((f) => (
+            {["SQL Playground", "History & audit log", "ZIP export", "Version history", "Priority queue"].map((f) => (
               <li key={f} className="flex items-center gap-2.5 text-sm text-[var(--text-subtle)] opacity-50">
                 <X size={12} className="text-[var(--border)] flex-shrink-0" />
                 {f}
@@ -290,6 +291,7 @@ export default function PricingPage() {
               "Quick Convert",
               "SQL · TXT · JSON export",
               "SQL Playground",
+              "History & audit log",
               "ZIP project export",
               "Version history",
               "Priority queue",

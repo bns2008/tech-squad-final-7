@@ -4,10 +4,11 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Search, Clock, FileCode, Sparkles, Wand2, ArrowRightLeft,
   Copy, Download, Trash2, RefreshCw, Database, ChevronDown, ChevronUp,
-  CheckCircle, AlertTriangle, X,
+  CheckCircle, AlertTriangle, X, Lock, Zap,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { timeAgo, formatDateTime, downloadText, cn } from "@/lib/utils";
+import { canUsePlayground } from "@/lib/subscription";
 import { apiGetToolHistory, apiDeleteToolHistoryEntry, apiClearToolHistory, type BackendToolHistory } from "@/lib/api";
 import toast from "react-hot-toast";
 
@@ -43,8 +44,91 @@ const FILTER_OPTIONS = [
   { value: "migrate",       label: "Migrate" },
 ];
 
+// ── Pro gate component ─────────────────────────────────────────────────────────
+function HistoryLocked({ onNavigate }: { onNavigate: (p: string) => void }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-24 px-4">
+      {/* Ambient glow */}
+      <div className="absolute pointer-events-none" aria-hidden>
+        <div className="w-[500px] h-[300px] rounded-full"
+          style={{ background: "radial-gradient(ellipse,rgba(var(--primary-rgb,139,170,130),0.06) 0%,transparent 70%)",
+            filter: "blur(60px)" }} />
+      </div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+        className="relative flex flex-col items-center gap-6 text-center max-w-md w-full"
+      >
+        {/* Icon with lock badge */}
+        <div className="relative">
+          <div className="w-20 h-20 rounded-2xl flex items-center justify-center"
+            style={{ background: "var(--card)", border: "1px solid var(--border)",
+              boxShadow: "0 8px 32px rgba(0,0,0,0.12)" }}>
+            <Clock size={32} style={{ color: "var(--primary)" }} />
+          </div>
+          <div className="absolute -top-2 -right-2 w-8 h-8 rounded-full flex items-center justify-center"
+            style={{ background: "var(--warning)", boxShadow: "0 4px 12px rgba(0,0,0,0.2)" }}>
+            <Lock size={14} className="text-white" />
+          </div>
+        </div>
+
+        {/* Heading */}
+        <div>
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold mb-3"
+            style={{ background: "var(--primary-light)", color: "var(--primary)",
+              border: "1px solid var(--primary-border, rgba(139,170,130,0.3))" }}>
+            <Zap size={11} /> Pro Feature
+          </div>
+          <h2 className="text-2xl font-bold text-[var(--text)] mb-2">History</h2>
+          <p className="text-sm text-[var(--text-muted)] leading-relaxed">
+            Full history tracking across Quick Convert, Generate, and Migrate — with search, filters, SQL preview, copy and download — is available on the Pro plan.
+          </p>
+        </div>
+
+        {/* What they're missing */}
+        <div className="w-full card p-5 text-left space-y-3">
+          {[
+            { icon: "🕐", text: "Every conversion stored and searchable" },
+            { icon: "🔍", text: "Filter by tool — Quick Convert, Generate, Migrate" },
+            { icon: "📋", text: "Copy or download SQL from any past result" },
+            { icon: "📊", text: "Stats breakdown across all tools" },
+            { icon: "🗑️", text: "Delete individual entries or clear all" },
+          ].map(({ icon, text }) => (
+            <div key={text} className="flex items-center gap-3">
+              <span className="text-base leading-none flex-shrink-0">{icon}</span>
+              <span className="text-sm text-[var(--text-muted)]">{text}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* CTA */}
+        <div className="flex flex-col gap-3 w-full">
+          <motion.button
+            whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
+            onClick={() => onNavigate("pricing")}
+            className="btn-primary w-full justify-center py-3 text-sm font-bold"
+          >
+            <Zap size={15} className="text-yellow-300" />
+            Upgrade to Pro — ₹199 / month
+          </motion.button>
+          <p className="text-[11px] text-[var(--text-subtle)]">
+            Instant access after upgrade · Cancel anytime
+          </p>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
 export default function HistoryPage({ onNavigate }: { onNavigate: (p: string) => void }) {
-  const { user } = useStore();
+  const { user, getSubscription } = useStore();
+  const isPro = canUsePlayground(getSubscription());
+
+  if (!isPro) {
+    return <HistoryLocked onNavigate={onNavigate} />;
+  }
 
   const [entries, setEntries]       = useState<BackendToolHistory[]>([]);
   const [loading, setLoading]       = useState(true);
