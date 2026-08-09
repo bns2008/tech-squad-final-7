@@ -2,12 +2,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard, FolderOpen, History, Settings, Shield,
-<<<<<<< HEAD
   ChevronLeft, ChevronRight, Database, LogOut, Plus, Sparkles, CreditCard, UserRound, X, Wand2, ArrowRightLeft, Wrench, ChevronDown, Terminal, Lock, Bot
-=======
-  ChevronLeft, ChevronRight, Database, LogOut, Plus, Sparkles, CreditCard, UserRound, X,
-  Wand2, ArrowRightLeft, Wrench, ChevronDown, Terminal, Lock
->>>>>>> 41514771789bf48316f6e56119490ab30e850530
 } from "lucide-react";
 import { useState } from "react";
 import { useStore } from "@/lib/store";
@@ -90,13 +85,8 @@ export default function Sidebar({ page, onNavigate }: SidebarProps) {
 
   const projects = allProjects.filter(p => p.ownerId === (user?.id ?? ""));
   const isAdmin = user?.role === "admin";
-<<<<<<< HEAD
-  const width = sidebarCollapsed ? 64 : 220;
-  const isToolPage = ["quick-convert", "generate", "migrate", "playground", "assistant"].includes(page);
-=======
   const width = sidebarCollapsed ? 72 : 248;
-  const isToolPage = ["quick-convert", "generate", "migrate", "playground"].includes(page);
->>>>>>> 41514771789bf48316f6e56119490ab30e850530
+  const isToolPage = ["quick-convert", "generate", "migrate", "playground", "assistant"].includes(page);
 
   const handleNavigate = (id: string) => {
     onNavigate(id);
@@ -169,159 +159,7 @@ export default function Sidebar({ page, onNavigate }: SidebarProps) {
           </button>
         ) : (
           <>
-<<<<<<< HEAD
-        {/* New Project */}
-        <button
-          onClick={() => handleNavigate("projects")}
-          title="New Project"
-          className={cn(
-            "w-full flex items-center gap-3 px-[18px] py-[11px] rounded-[14px] mb-3 text-sm font-semibold transition-all duration-200",
-            activeTextColor(theme),
-          )}
-          style={{ background: "var(--primary)" }}
-          onMouseEnter={e => (e.currentTarget.style.background = "var(--primary-hover)")}
-          onMouseLeave={e => (e.currentTarget.style.background = "var(--primary)")}
-        >
-          <Plus size={15} className="flex-shrink-0" />
-          {!sidebarCollapsed && <span>New Project</span>}
-        </button>
-
-        {/* Dashboard */}
-        <NavBtn
-          active={page === "dashboard"}
-          onClick={() => handleNavigate("dashboard")}
-          title="Dashboard"
-          icon={<LayoutDashboard size={16} className="flex-shrink-0" />}
-          label={!sidebarCollapsed ? "Dashboard" : null}
-          activeClass={activeNav}
-        />
-
-        {/* ── Tools accordion ─────────────────────────────────────────────── */}
-        <div>
-          <button
-            onClick={() => {
-              if (sidebarCollapsed) {
-                setSidebarCollapsed(false);
-                setToolsOpen(true);
-              } else {
-                setToolsOpen((o) => !o);
-              }
-            }}
-            title="Tools"
-            className={cn(
-              "w-full flex items-center gap-3 px-[18px] py-[11px] rounded-[12px] text-sm font-medium transition-all duration-200",
-              isToolPage ? activeNav : inactiveNav,
-            )}
-            style={isToolPage ? activeStyle : undefined}
-          >
-            <Wrench size={16} className="flex-shrink-0" />
-            {!sidebarCollapsed && (
-              <>
-                <span className="flex-1 truncate text-left">Tools</span>
-                <motion.span animate={{ rotate: toolsOpen ? 180 : 0 }} transition={{ duration: 0.2 }}>
-                  <ChevronDown size={13} />
-                </motion.span>
-              </>
-            )}
-          </button>
-
-          <AnimatePresence initial={false}>
-            {toolsOpen && !sidebarCollapsed && (
-              <motion.div
-                key="tools-dropdown"
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: "auto", opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-                className="overflow-hidden"
-              >
-                <div className="mt-1 ml-3 pl-3 border-l border-[var(--border)] space-y-0.5 pb-1">
-                  {toolsItems.map(({ id, label, icon: Icon, badge }) => {
-                    const isLocked = id === "playground" && !isPro;
-                    return (
-                    <button
-                      key={id}
-                      onClick={() => handleNavigate(id)}
-                      className={cn(
-                        "w-full flex items-center gap-2.5 px-[14px] py-[9px] rounded-[12px] text-xs font-medium transition-all duration-200 group",
-                        page === id ? activeNav : inactiveNav,
-                      )}
-                      style={page === id ? activeStyle : undefined}
-                    >
-                      <Icon size={14} className="flex-shrink-0" />
-                      <span className="flex-1 truncate text-left">{label}</span>
-                      {isLocked ? (
-                        <span className="flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded"
-                          style={{ background: "rgba(201,155,94,0.18)", color: "var(--warning)", border: "1px solid rgba(201,155,94,0.30)" }}>
-                          <Lock size={8} /> Pro
-                        </span>
-                      ) : (
-                        <span className={cn(
-                          "text-[9px] font-semibold px-1.5 py-0.5 rounded hidden group-hover:inline-block",
-                          page === id
-                            ? `inline-block ${activeTextColor(theme)} bg-black/10`
-                            : "text-white bg-white/20",
-                        )}>
-                          {badge}
-                        </span>
-                      )}
-                    </button>
-                    );
-                  })}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-
-        {/* Rest of main nav */}
-        {mainNav.filter(n => n.id !== "dashboard").map(({ id, label, icon: Icon }) => (
-          <button
-            key={`${id}-${label}`}
-            onClick={() => handleNavigate(id)}
-            title={label}
-            className={cn(
-              "w-full flex items-center gap-3 px-[18px] py-[11px] rounded-[12px] text-sm font-medium transition-all duration-200",
-              page === id ? activeNav : inactiveNav,
-            )}
-            style={page === id ? activeStyle : undefined}
-          >
-            <Icon size={16} className="flex-shrink-0" />
-            {!sidebarCollapsed && <span className="truncate">{label}</span>}
-            {/* Project count badge */}
-            {!sidebarCollapsed && id === "projects" && projects.length > 0 && (
-              <span className={cn(
-                "ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded-full",
-                page === "projects"
-                  ? `${activeTextColor(theme)} bg-black/10`
-                  : "text-white bg-white/20"
-              )}>
-                {projects.length}
-              </span>
-            )}
-            {/* Pro lock badge on History for free users */}
-            {!sidebarCollapsed && id === "history" && !isPro && (
-              <span className="ml-auto flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded"
-                style={{ background: "rgba(201,155,94,0.18)", color: "var(--warning)", border: "1px solid rgba(201,155,94,0.30)" }}>
-                <Lock size={8} /> Pro
-              </span>
-            )}
-          </button>
-        ))}
-
-        {/* Admin section */}
-        {isAdmin && (
-          <>
-            <div className="pt-4 pb-1">
-              {!sidebarCollapsed && (
-                <p className="text-[10px] font-semibold uppercase tracking-widest text-[var(--text-subtle)] px-[18px] opacity-60">
-                  Admin
-                </p>
-              )}
-            </div>
-=======
             {/* New Project */}
->>>>>>> 41514771789bf48316f6e56119490ab30e850530
             <button
               onClick={() => handleNavigate("projects")}
               title="New Project"
