@@ -255,12 +255,13 @@ export default function PricingPage() {
           )}
         >
           {/* Gradient header accent */}
-          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary-600 to-primary-400" />
+          <div className="absolute top-0 left-0 right-0 h-1"
+            style={{ background: "linear-gradient(to right, var(--primary), var(--primary-hover))" }} />
 
           <div className="flex items-start justify-between mb-5">
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <p className="text-xs font-bold uppercase tracking-widest text-primary-600">Pro</p>
+                <p className="text-xs font-bold uppercase tracking-widest" style={{ color: "var(--primary)" }}>Pro</p>
                 <span className="flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full
                   bg-amber-50 dark:bg-amber-500/10 text-amber-600 border border-amber-200 dark:border-amber-500/20">
                   <Star size={9} fill="currentColor" /> Most Popular
@@ -345,7 +346,7 @@ export default function PricingPage() {
               <tr className="border-b border-[var(--border)]">
                 <th className="text-left px-6 py-3 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide w-1/2">Feature</th>
                 <th className="text-center px-6 py-3 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide">Free</th>
-                <th className="text-center px-6 py-3 text-xs font-semibold text-primary-600 uppercase tracking-wide">Pro</th>
+                <th className="text-center px-6 py-3 text-xs font-semibold text-[var(--text)] uppercase tracking-wide">Pro</th>
               </tr>
             </thead>
             <tbody>
@@ -366,7 +367,7 @@ export default function PricingPage() {
                     {typeof pro === "boolean" ? (
                       pro ? <Check size={15} className="text-emerald-500 mx-auto" /> : <X size={14} className="text-[var(--border)] mx-auto" />
                     ) : (
-                      <span className="text-sm font-semibold text-primary-600">{pro}</span>
+                      <span className="text-sm font-semibold text-[var(--text)]">{pro}</span>
                     )}
                   </td>
                 </tr>

@@ -373,7 +373,7 @@ export default function MigratePage({ onNavigate }: { onNavigate: (p: string) =>
               className={cn(
                 "px-6 py-3.5 text-sm font-semibold transition-colors capitalize",
                 activeTab === tab
-                  ? "text-primary-600 border-b-2 border-primary-600 -mb-px bg-primary-50 dark:bg-primary-900/20"
+                  ? "text-[var(--text)] border-b-2 border-[var(--text-subtle)] -mb-px bg-[var(--surface)]"
                   : "text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--surface)]"
               )}>
               {tab === "input" ? `Source SQL (${srcDb.label})` : `Converted SQL (${tgtDb.label})`}

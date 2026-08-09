@@ -538,7 +538,7 @@ export default function GeneratePage({ onNavigate }: { onNavigate: (p: string) =
           <label className="text-sm font-bold text-[var(--text)]">Describe your database</label>
           <button
             onClick={() => setShowExamples(!showExamples)}
-            className="flex items-center gap-1.5 text-xs text-primary-600 font-medium hover:underline"
+            className="flex items-center gap-1.5 text-xs text-[var(--text-muted)] font-medium hover:text-[var(--text)] transition-colors"
           >
             <Lightbulb size={13} />
             Examples
@@ -559,8 +559,8 @@ export default function GeneratePage({ onNavigate }: { onNavigate: (p: string) =
                     key={ex}
                     onClick={() => { setDescription(ex); setShowExamples(false); }}
                     className="text-xs px-3 py-1.5 rounded-lg border border-[var(--border)]
-                      bg-[var(--surface)] text-[var(--text-muted)] hover:border-primary-400
-                      hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20
+                      bg-[var(--surface)] text-[var(--text-muted)] hover:border-[var(--text-subtle)]
+                      hover:text-[var(--text)] hover:bg-[var(--card)]
                       transition-all text-left"
                   >
                     {ex}
