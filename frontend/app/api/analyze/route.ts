@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const MISTRAL_MODEL   = "mistral-small-latest";
+const MISTRAL_MODEL   = process.env.MISTRAL_MODEL ?? "pixtral-12b-2409";
 const MISTRAL_API_KEY = process.env.MISTRAL_API_KEY ?? "";
 const MISTRAL_API_URL = "https://api.mistral.ai/v1/chat/completions";
 const REQUEST_TIMEOUT = 120_000;
@@ -125,12 +125,51 @@ CRITICAL SQLite rules — every single one must be obeyed:
 // ─────────────────────────────────────────────────────────────────────────────
 // SHARED BASE PROMPT (visual extraction + fidelity rules)
 // ─────────────────────────────────────────────────────────────────────────────
-function buildPrompt(dialect: string): string {
+function buildPrompt(dialect: string, defaultColumns?: Array<{name: string; type: string; constraints: string; defaultValue: string; description: string}>): string {
   const dialectRules = DIALECT_RULES[dialect] ?? DIALECT_RULES.postgresql;
+
+  let defaultColumnsSection = "";
+  if (defaultColumns && defaultColumns.length > 0) {
+    const validColumns = defaultColumns.filter(col => col.name && col.type);
+    if (validColumns.length > 0) {
+      defaultColumnsSection = `
+════════════════════════════════════════════════════════════════════
+DEFAULT COLUMNS — ALWAYS ADD TO EVERY TABLE
+════════════════════════════════════════════════════════════════════
+The following columns MUST be added to EVERY table you generate, in addition to
+the columns derived from the ER diagram. Add these columns AFTER all diagram-derived
+columns, but BEFORE any foreign key constraint declarations.
+
+${validColumns.map((col, idx) => {
+  let colDef = `${idx + 1}. Column: ${col.name}
+   Type: ${col.type}`;
+  if (col.constraints) colDef += `\n   Constraints: ${col.constraints}`;
+  if (col.defaultValue) colDef += `\n   Default Value: ${col.defaultValue}`;
+  if (col.description) colDef += `\n   Description: ${col.description}`;
+  return colDef;
+}).join('\n\n')}
+
+IMPORTANT RULES FOR DEFAULT COLUMNS:
+• These columns must appear in EVERY CREATE TABLE statement
+• Add them AFTER all diagram-derived columns
+• If a constraint includes DEFAULT, place it after the data type
+• If a constraint includes NOT NULL, place it after any DEFAULT clause
+• Adapt the data types to match the target dialect if needed
+• Example placement in CREATE TABLE:
+    CREATE TABLE EntityName (
+        diagram_column_1 TYPE,
+        diagram_column_2 TYPE,
+        ${validColumns[0].name} ${validColumns[0].type}${validColumns[0].constraints ? ' ' + validColumns[0].constraints : ''}${validColumns[0].defaultValue ? ' DEFAULT ' + validColumns[0].defaultValue : ''},
+        PRIMARY KEY (...)
+    );
+`;
+    }
+  }
 
   return `You are a DDL generator. Your sole job is to transcribe exactly what is drawn in the ER diagram into valid, executable DDL for the specified target dialect. You must never use outside knowledge to add, infer, rename, or improve anything beyond what is literally visible in the image.
 
 ${dialectRules}
+${defaultColumnsSection}
 
 ════════════════════════════════════════════════════════════════════
 PHASE 1 — VISUAL EXTRACTION  (internal reasoning only, no output)
@@ -218,6 +257,16 @@ export async function POST(req: NextRequest) {
     const form = await req.formData();
     const file    = form.get("image")   as File   | null;
     const dialect = (form.get("dialect") as string | null)?.toLowerCase() ?? "postgresql";
+    const defaultColumnsJson = form.get("defaultColumns") as string | null;
+    
+    let defaultColumns: Array<{name: string; type: string; constraints: string; defaultValue: string; description: string}> | undefined;
+    if (defaultColumnsJson) {
+      try {
+        defaultColumns = JSON.parse(defaultColumnsJson);
+      } catch (e) {
+        console.error("Failed to parse defaultColumns:", e);
+      }
+    }
 
     if (!file) {
       return NextResponse.json({ error: "No image provided" }, { status: 400 });
@@ -236,7 +285,7 @@ export async function POST(req: NextRequest) {
     const b64      = Buffer.from(bytes).toString("base64");
     const mimeType = file.type === "image/svg+xml" ? "image/png" : file.type;
 
-    const prompt = buildPrompt(dialect);
+    const prompt = buildPrompt(dialect, defaultColumns);
 
     const t0   = Date.now();
     const ctrl = new AbortController();

@@ -51,6 +51,7 @@ export default function QuickConvertPage({ onNavigate }: { onNavigate: (p: strin
     getSubscription, incrementConversions,
     quickHistory, addQuickResult, clearQuickHistory,
     theme, user, setPlaygroundInitialSQL,
+    defaultColumnsEnabled, defaultColumns,
   } = useStore();
 
   const sub = getSubscription();
@@ -89,6 +90,15 @@ export default function QuickConvertPage({ onNavigate }: { onNavigate: (p: strin
         const form = new FormData();
         form.append("image", file);
         form.append("dialect", selectedDb);
+        
+        // Add default columns if enabled
+        if (defaultColumnsEnabled && defaultColumns.length > 0) {
+          const validColumns = defaultColumns.filter(col => col.name && col.type);
+          if (validColumns.length > 0) {
+            form.append("defaultColumns", JSON.stringify(validColumns));
+          }
+        }
+        
         const t0  = Date.now();
         const res = await fetch("/api/analyze", { method: "POST", body: form });
         const data = await res.json();
@@ -131,7 +141,7 @@ export default function QuickConvertPage({ onNavigate }: { onNavigate: (p: strin
         toast.error(err.message || "Analysis failed");
       }
     },
-    [sub, qcPreview, runStepAnimation, addQuickResult, incrementConversions, selectedDb, user]
+    [sub, qcPreview, runStepAnimation, addQuickResult, incrementConversions, selectedDb, user, defaultColumnsEnabled, defaultColumns]
   );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({

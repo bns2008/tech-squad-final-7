@@ -19,6 +19,7 @@ export default function HomePage() {
     appState, setAppState,
     currentResult, setCurrentResult,
     setError, addToHistory, reset,
+    defaultColumnsEnabled, defaultColumns,
   } = useStore();
 
   const [imageUrl, setImageUrl] = useState<string | null>(null);
@@ -37,6 +38,14 @@ export default function HomePage() {
     try {
       const form = new FormData();
       form.append("image", f);
+      
+      // Add default columns if enabled
+      if (defaultColumnsEnabled && defaultColumns.length > 0) {
+        const validColumns = defaultColumns.filter(col => col.name && col.type);
+        if (validColumns.length > 0) {
+          form.append("defaultColumns", JSON.stringify(validColumns));
+        }
+      }
 
       const t0 = Date.now();
       const res = await fetch("/api/analyze", { method: "POST", body: form });
@@ -84,7 +93,7 @@ export default function HomePage() {
       setAppState("error");
       toast.error(err.message || "Failed to analyze image");
     }
-  }, [imageUrl, setAppState, setCurrentResult, setError, addToHistory]);
+  }, [imageUrl, setAppState, setCurrentResult, setError, addToHistory, defaultColumnsEnabled, defaultColumns]);
 
   const handleFile = (f: File) => processFile(f);
   const handleRegenerate = () => { if (file) processFile(file); };

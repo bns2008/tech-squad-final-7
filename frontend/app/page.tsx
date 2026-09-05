@@ -32,7 +32,7 @@ import AIAssistantPanel from "@/components/AIAssistantPanel";
 
 import { useStore } from "@/lib/store";
 import dynamic from "next/dynamic";
-import { LayoutDashboard, FolderOpen, History, Settings, Shield } from "lucide-react";
+import { LayoutDashboard, FolderOpen, History, Settings, Shield, X } from "lucide-react";
 
 const DatabaseScene = dynamic(() => import("@/components/ambient/DatabaseScene"), { ssr: false });
 
@@ -44,6 +44,7 @@ export default function RootPage() {
   const [mounted, setMounted] = useState(false);
   const [authPage, setAuthPage] = useState<AuthPage>("login");
   const [appPage, setAppPage] = useState<AppPage>("dashboard");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -114,6 +115,7 @@ export default function RootPage() {
     // guard admin route
     if (page === "admin" && user?.role !== "admin") return;
     setAppPage(page as AppPage);
+    setMobileMenuOpen(false); // Close mobile menu when navigating
   };
 
   const renderPage = () => {
@@ -140,7 +142,28 @@ export default function RootPage() {
 
   return (
     <div className="flex min-h-screen bg-[var(--surface)]">
-      <Sidebar page={appPage} onNavigate={navigate} />
+      {/* Mobile sidebar overlay backdrop */}
+      <div 
+        className={`mobile-sidebar-overlay ${mobileMenuOpen ? 'active' : ''}`}
+        onClick={() => setMobileMenuOpen(false)}
+        aria-hidden="true"
+      />
+
+      <Sidebar 
+        page={appPage} 
+        onNavigate={navigate}
+        mobileOpen={mobileMenuOpen}
+        onMobileToggle={setMobileMenuOpen}
+      />
+
+      {/* Mobile toggle button */}
+      <button
+        className="mobile-sidebar-toggle"
+        onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+        aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
+      >
+        {mobileMenuOpen ? <X size={22} /> : <LayoutDashboard size={22} />}
+      </button>
 
       <div className="app-main flex-1 flex flex-col min-h-screen min-w-0 max-w-full overflow-x-hidden" style={{ marginLeft: ml, transition: "margin-left 0.25s cubic-bezier(0.16,1,0.3,1)" }}>
         <Navbar onNavigate={navigate} page={appPage} />

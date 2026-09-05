@@ -12,7 +12,7 @@ FAILED_FOLDER = _os.environ.get("FAILED_FOLDER", "./failed_images")
 RESULTS_FOLDER = _os.environ.get("RESULTS_FOLDER", "./results")
 
 # --- Mistral AI -------------------------------------------------------
-MODEL = _os.environ.get("MISTRAL_MODEL", "mistral-small-latest")
+MODEL = _os.environ.get("MISTRAL_MODEL", "pixtral-12b-2409")
 MISTRAL_API_KEY = _os.environ.get("MISTRAL_API_KEY", "")
 MISTRAL_API_URL = "https://api.mistral.ai/v1/chat/completions"
 

@@ -117,7 +117,7 @@ interface GenerateResult {
 }
 
 export default function GeneratePage({ onNavigate }: { onNavigate: (p: string) => void }) {
-  const { getSubscription, incrementConversions, incrementAIGenerations, theme, user, projects, upsertProject, upsertFile, setActiveProject, setPlaygroundInitialSQL } = useStore();
+  const { getSubscription, incrementConversions, incrementAIGenerations, theme, user, projects, upsertProject, upsertFile, setActiveProject, setPlaygroundInitialSQL, defaultColumnsEnabled, defaultColumns } = useStore();
   const sub = getSubscription();
   const ownerId = user?.id ?? "";
   const myProjects = projects.filter(p => p.ownerId === ownerId);
@@ -326,10 +326,25 @@ export default function GeneratePage({ onNavigate }: { onNavigate: (p: string) =
 
     try {
       const t0 = Date.now();
+      
+      const payload: any = { 
+        description: description.trim(), 
+        dialect: selectedDb, 
+        diagramType 
+      };
+      
+      // Add default columns if enabled
+      if (defaultColumnsEnabled && defaultColumns.length > 0) {
+        const validColumns = defaultColumns.filter(col => col.name && col.type);
+        if (validColumns.length > 0) {
+          payload.defaultColumns = validColumns;
+        }
+      }
+      
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ description: description.trim(), dialect: selectedDb, diagramType }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       stopAnim();

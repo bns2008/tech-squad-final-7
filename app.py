@@ -724,7 +724,7 @@ def save_conversion(payload: dict, request: Request, background_tasks: Backgroun
     )
 
     api_log = ApiUsage(user_id=user_id, endpoint=f"/api/{tool.replace('_','-')}",
-                       model_used="mistral-small-latest",
+                       model_used="pixtral-12b-2409",
                        processing_time_ms=exec_time, success=success)
     db.add(api_log)
     db.commit()

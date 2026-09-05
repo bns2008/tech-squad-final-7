@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const MISTRAL_MODEL   = "mistral-small-latest";
+const MISTRAL_MODEL   = process.env.MISTRAL_MODEL ?? "pixtral-12b-2409";
 const MISTRAL_API_KEY = process.env.MISTRAL_API_KEY ?? "";
 const MISTRAL_API_URL = "https://api.mistral.ai/v1/chat/completions";
 const REQUEST_TIMEOUT = 120_000;
@@ -42,8 +42,29 @@ const DIALECT_RULES: Record<string, string> = {
 // ─────────────────────────────────────────────────────────────────────────────
 // DIAGRAM TYPE PROMPTS
 // ─────────────────────────────────────────────────────────────────────────────
-function buildPrompt(dialect: string, diagramType: string): string {
+function buildPrompt(dialect: string, diagramType: string, defaultColumns?: Array<{name: string; type: string; constraints: string; defaultValue: string; description: string}>): string {
   const rules = DIALECT_RULES[dialect] ?? DIALECT_RULES.postgresql;
+
+  let defaultColumnsSection = "";
+  if (defaultColumns && defaultColumns.length > 0) {
+    const validColumns = defaultColumns.filter(col => col.name && col.type);
+    if (validColumns.length > 0) {
+      defaultColumnsSection = `
+
+════ DEFAULT COLUMNS — ADD TO EVERY TABLE ════
+The following columns MUST be added to EVERY table you generate:
+${validColumns.map((col, idx) => {
+  let colDef = `${idx + 1}. ${col.name} (${col.type})`;
+  if (col.constraints) colDef += ` ${col.constraints}`;
+  if (col.defaultValue) colDef += ` DEFAULT ${col.defaultValue}`;
+  if (col.description) colDef += ` // ${col.description}`;
+  return colDef;
+}).join('\n')}
+
+Add these columns AFTER all domain-specific columns in both the Mermaid diagram and SQL.
+`;
+    }
+  }
 
   // ── ER Diagram (default) ──────────────────────────────────────────────────
   if (diagramType === "er") {
@@ -54,6 +75,7 @@ Produce TWO outputs:
 
 ════ DIALECT RULES ════
 ${rules}
+${defaultColumnsSection}
 
 ════ OUTPUT FORMAT — return ONLY valid JSON, no markdown, no prose ════
 {
@@ -122,6 +144,7 @@ Produce TWO outputs:
 
 ════ DIALECT RULES ════
 ${rules}
+${defaultColumnsSection}
 
 ════ OUTPUT FORMAT — return ONLY valid JSON, no markdown, no prose ════
 {
@@ -166,6 +189,7 @@ Produce TWO outputs:
 
 ════ DIALECT RULES ════
 ${rules}
+${defaultColumnsSection}
 
 ════ OUTPUT FORMAT — return ONLY valid JSON, no markdown, no prose ════
 {
@@ -206,6 +230,7 @@ Produce TWO outputs:
 
 ════ DIALECT RULES ════
 ${rules}
+${defaultColumnsSection}
 
 ════ OUTPUT FORMAT — return ONLY valid JSON, no markdown, no prose ════
 {
@@ -251,6 +276,7 @@ Produce TWO outputs:
 
 ════ DIALECT RULES ════
 ${rules}
+${defaultColumnsSection}
 
 ════ OUTPUT FORMAT — return ONLY valid JSON, no markdown, no prose ════
 {
@@ -282,7 +308,7 @@ ${rules}
   }
 
   // fallback — ER
-  return buildPrompt(dialect, "er");
+  return buildPrompt(dialect, "er", defaultColumns);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -298,6 +324,7 @@ export async function POST(req: NextRequest) {
     const description: string  = (body.description  ?? "").trim();
     const dialect: string      = (body.dialect       ?? "postgresql").toLowerCase();
     const diagramType: string  = (body.diagramType   ?? "er").toLowerCase();
+    const defaultColumns = body.defaultColumns as Array<{name: string; type: string; constraints: string; defaultValue: string; description: string}> | undefined;
 
     if (!description) {
       return NextResponse.json({ error: "No description provided" }, { status: 400 });
@@ -306,7 +333,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Description too long (max 2000 characters)" }, { status: 400 });
     }
 
-    const prompt = buildPrompt(dialect, diagramType);
+    const prompt = buildPrompt(dialect, diagramType, defaultColumns);
 
     const ctrl  = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), REQUEST_TIMEOUT);

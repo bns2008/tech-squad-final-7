@@ -12,6 +12,8 @@ import { canUsePlayground, aiGenerationsLeft } from "@/lib/subscription";
 interface SidebarProps {
   page: string;
   onNavigate: (p: string) => void;
+  mobileOpen?: boolean;
+  onMobileToggle?: (open: boolean) => void;
 }
 
 const toolsItems = [
@@ -73,14 +75,13 @@ function NavBtn({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-export default function Sidebar({ page, onNavigate }: SidebarProps) {
+export default function Sidebar({ page, onNavigate, mobileOpen = false, onMobileToggle }: SidebarProps) {
   const { user, sidebarCollapsed, setSidebarCollapsed, projects: allProjects, theme, getSubscription } = useStore();
   const activeNav = `${activeNavBase} ${activeTextColor(theme)}`;
   const subscription = getSubscription();
   const isPro = canUsePlayground(subscription);
   const aiCreditsLeft = aiGenerationsLeft(subscription);
 
-  const [mobileOpen, setMobileOpen] = useState(true);
   const [toolsOpen, setToolsOpen] = useState(
     ["quick-convert", "generate", "migrate", "playground", "assistant"].includes(page)
   );
@@ -92,7 +93,7 @@ export default function Sidebar({ page, onNavigate }: SidebarProps) {
 
   const handleNavigate = (id: string) => {
     onNavigate(id);
-    setMobileOpen(false);
+    onMobileToggle?.(false); // Close mobile menu when navigating
   };
 
   return (
@@ -134,11 +135,11 @@ export default function Sidebar({ page, onNavigate }: SidebarProps) {
         </AnimatePresence>
 
         <button
-          onClick={() => setMobileOpen(false)}
+          onClick={() => onMobileToggle?.(false)}
           className="mobile-sidebar-close"
           aria-label="Close navigation"
         >
-          <X size={18} />
+          <X size={20} />
         </button>
       </div>
 
@@ -433,14 +434,6 @@ export default function Sidebar({ page, onNavigate }: SidebarProps) {
           {sidebarCollapsed ? <ChevronRight size={17} /> : <ChevronLeft size={17} />}
         </button>
       </div>
-
-      <button
-        onClick={() => setMobileOpen((open) => !open)}
-        className="mobile-sidebar-toggle"
-        aria-label={mobileOpen ? "Close navigation" : "Open navigation"}
-      >
-        {mobileOpen ? <X size={20} /> : <Database size={20} />}
-      </button>
     </motion.aside>
   );
 }

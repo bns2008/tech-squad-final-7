@@ -19,6 +19,15 @@ export interface AnalysisResult {
   };
 }
 
+export interface DefaultColumn {
+  id: string;
+  name: string;
+  type: string;
+  constraints: string;
+  defaultValue: string;
+  description: string;
+}
+
 export interface HistoryEntry {
   id: string;
   name: string;
@@ -43,10 +52,14 @@ interface UISlice {
   selectedLanguage: string;
   sidebarCollapsed: boolean;
   aiAssistantOpen: boolean;
+  defaultColumnsEnabled: boolean;
+  defaultColumns: DefaultColumn[];
   setTheme: (t: "light" | "dark") => void;
   setSelectedLanguage: (l: string) => void;
   setSidebarCollapsed: (v: boolean) => void;
   setAiAssistantOpen: (open: boolean) => void;
+  setDefaultColumnsEnabled: (enabled: boolean) => void;
+  setDefaultColumns: (columns: DefaultColumn[]) => void;
 }
 
 interface SubscriptionSlice {
@@ -146,6 +159,8 @@ export const useStore = create<Store>()(
       selectedLanguage: "postgresql",
       sidebarCollapsed: false,
       aiAssistantOpen: false,
+      defaultColumnsEnabled: false,
+      defaultColumns: [],
       setTheme: (theme) => {
         set({ theme });
         if (typeof document !== "undefined")
@@ -154,6 +169,8 @@ export const useStore = create<Store>()(
       setSelectedLanguage: (l) => set({ selectedLanguage: l }),
       setSidebarCollapsed: (v) => set({ sidebarCollapsed: v }),
       setAiAssistantOpen: (open) => set({ aiAssistantOpen: open }),
+      setDefaultColumnsEnabled: (enabled) => set({ defaultColumnsEnabled: enabled }),
+      setDefaultColumns: (columns) => set({ defaultColumns: columns }),
 
       // ── Subscription ────────────────────────────────────────────────────────
       subscription: defaultSubscription(),
@@ -329,6 +346,8 @@ export const useStore = create<Store>()(
         activeProjectId:  state.activeProjectId,
         subscription:     state.subscription,
         quickHistory:     state.quickHistory,
+        defaultColumnsEnabled: state.defaultColumnsEnabled,
+        defaultColumns:   state.defaultColumns,
       }),
     }
   )

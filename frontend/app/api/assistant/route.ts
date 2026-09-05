@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const MISTRAL_MODEL   = "mistral-small-latest";
+const MISTRAL_MODEL   = process.env.MISTRAL_MODEL ?? "pixtral-12b-2409";
 const MISTRAL_API_KEY = process.env.MISTRAL_API_KEY ?? "";
 const MISTRAL_API_URL = "https://api.mistral.ai/v1/chat/completions";
 const REQUEST_TIMEOUT = 90_000;

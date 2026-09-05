@@ -3,7 +3,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Lock, Sun, Globe, Trash2,
-  Eye, EyeOff, AlertCircle, BarChart3
+  Eye, EyeOff, AlertCircle, BarChart3, Plus, X, Settings
 } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { changePassword, deleteAccount } from "@/lib/auth";
@@ -12,15 +12,16 @@ import toast from "react-hot-toast";
 import UsagePage from "@/components/pages/UsagePage";
 
 const TABS = [
-  { id: "usage",     label: "Usage",           icon: BarChart3 },
-  { id: "password",  label: "Change Password", icon: Lock },
-  { id: "theme",     label: "Appearance",       icon: Sun },
-  { id: "language",  label: "Language",         icon: Globe },
-  { id: "danger",    label: "Delete Account",   icon: Trash2, danger: true },
+  { id: "usage",         label: "Usage",           icon: BarChart3 },
+  { id: "password",      label: "Change Password", icon: Lock },
+  { id: "theme",         label: "Appearance",      icon: Sun },
+  { id: "language",      label: "Language",        icon: Globe },
+  { id: "customization", label: "Customization",   icon: Settings },
+  { id: "danger",        label: "Delete Account",  icon: Trash2, danger: true },
 ];
 
 export default function SettingsPage({ onNavigate }: { onNavigate: (p: string) => void }) {
-  const { user, theme, setTheme, selectedLanguage, setSelectedLanguage, logout } = useStore();
+  const { user, theme, setTheme, selectedLanguage, setSelectedLanguage, logout, defaultColumnsEnabled, setDefaultColumnsEnabled, defaultColumns, setDefaultColumns } = useStore();
   const [tab, setTab]     = useState("usage");
   const [saving, setSaving] = useState(false);
 
@@ -191,6 +192,179 @@ export default function SettingsPage({ onNavigate }: { onNavigate: (p: string) =
                       ))}
                     </select>
                   </Row>
+                </div>
+              )}
+
+              {/* ── Customization ── */}
+              {tab === "customization" && (
+                <div>
+                  <h2 className="text-lg font-bold text-[var(--text)] mb-5">Default Columns</h2>
+                  <p className="text-sm text-[var(--text-muted)] mb-6">
+                    Configure default columns that will be automatically added to every table generated from ER diagrams.
+                    This feature works with all tools: analyze, generate, and migrate.
+                  </p>
+
+                  <Row label="Enable Default Columns" desc="Automatically add default columns to all generated tables">
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={defaultColumnsEnabled}
+                        onChange={(e) => setDefaultColumnsEnabled(e.target.checked)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-500/25 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary-600"></div>
+                    </label>
+                  </Row>
+
+                  {defaultColumnsEnabled && (
+                    <div className="mt-6 space-y-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-base font-semibold text-[var(--text)]">Default Columns Configuration</h3>
+                        <button
+                          onClick={() => {
+                            const newCol = {
+                              id: Date.now().toString(),
+                              name: "",
+                              type: "VARCHAR(255)",
+                              constraints: "",
+                              defaultValue: "",
+                              description: ""
+                            };
+                            setDefaultColumns([...defaultColumns, newCol]);
+                          }}
+                          className="btn-ghost text-sm flex items-center gap-1.5"
+                        >
+                          <Plus size={16} /> Add Column
+                        </button>
+                      </div>
+
+                      {defaultColumns.length === 0 ? (
+                        <div className="text-center py-8 text-[var(--text-muted)]">
+                          <p>No default columns configured.</p>
+                          <p className="text-sm mt-1">Click "Add Column" to create your first default column.</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          {defaultColumns.map((col, idx) => (
+                            <div key={col.id} className="card p-4 border border-[var(--border)]">
+                              <div className="flex items-start justify-between mb-3">
+                                <span className="text-sm font-medium text-[var(--text-muted)]">Column {idx + 1}</span>
+                                <button
+                                  onClick={() => {
+                                    setDefaultColumns(defaultColumns.filter(c => c.id !== col.id));
+                                  }}
+                                  className="text-red-500 hover:text-red-600 transition-colors"
+                                >
+                                  <X size={16} />
+                                </button>
+                              </div>
+                              
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div>
+                                  <label className="block text-sm font-medium text-[var(--text)] mb-1.5">
+                                    Column Name *
+                                  </label>
+                                  <input
+                                    type="text"
+                                    placeholder="e.g., created_at"
+                                    value={col.name}
+                                    onChange={(e) => {
+                                      const updated = defaultColumns.map(c =>
+                                        c.id === col.id ? { ...c, name: e.target.value } : c
+                                      );
+                                      setDefaultColumns(updated);
+                                    }}
+                                    className={inp}
+                                  />
+                                </div>
+
+                                <div>
+                                  <label className="block text-sm font-medium text-[var(--text)] mb-1.5">
+                                    Data Type *
+                                  </label>
+                                  <input
+                                    type="text"
+                                    placeholder="e.g., TIMESTAMP, UUID, VARCHAR(255)"
+                                    value={col.type}
+                                    onChange={(e) => {
+                                      const updated = defaultColumns.map(c =>
+                                        c.id === col.id ? { ...c, type: e.target.value } : c
+                                      );
+                                      setDefaultColumns(updated);
+                                    }}
+                                    className={inp}
+                                  />
+                                </div>
+
+                                <div>
+                                  <label className="block text-sm font-medium text-[var(--text)] mb-1.5">
+                                    Constraints
+                                  </label>
+                                  <input
+                                    type="text"
+                                    placeholder="e.g., NOT NULL, UNIQUE"
+                                    value={col.constraints}
+                                    onChange={(e) => {
+                                      const updated = defaultColumns.map(c =>
+                                        c.id === col.id ? { ...c, constraints: e.target.value } : c
+                                      );
+                                      setDefaultColumns(updated);
+                                    }}
+                                    className={inp}
+                                  />
+                                </div>
+
+                                <div>
+                                  <label className="block text-sm font-medium text-[var(--text)] mb-1.5">
+                                    Default Value
+                                  </label>
+                                  <input
+                                    type="text"
+                                    placeholder="e.g., CURRENT_TIMESTAMP, NULL"
+                                    value={col.defaultValue}
+                                    onChange={(e) => {
+                                      const updated = defaultColumns.map(c =>
+                                        c.id === col.id ? { ...c, defaultValue: e.target.value } : c
+                                      );
+                                      setDefaultColumns(updated);
+                                    }}
+                                    className={inp}
+                                  />
+                                </div>
+
+                                <div className="md:col-span-2">
+                                  <label className="block text-sm font-medium text-[var(--text)] mb-1.5">
+                                    Description / Relation
+                                  </label>
+                                  <input
+                                    type="text"
+                                    placeholder="e.g., Tracks when record was created, Foreign key to users table"
+                                    value={col.description}
+                                    onChange={(e) => {
+                                      const updated = defaultColumns.map(c =>
+                                        c.id === col.id ? { ...c, description: e.target.value } : c
+                                      );
+                                      setDefaultColumns(updated);
+                                    }}
+                                    className={inp}
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      <div className="mt-4 p-4 rounded-xl bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/30">
+                        <p className="text-sm text-blue-700 dark:text-blue-300">
+                          <strong>Tip:</strong> Common default columns include <code className="px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-900/30">created_at</code>, 
+                          <code className="px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-900/30 ml-1">updated_at</code>, 
+                          <code className="px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-900/30 ml-1">created_by</code>, and 
+                          <code className="px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-900/30 ml-1">is_active</code>.
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
