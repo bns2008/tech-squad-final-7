@@ -4,7 +4,7 @@ import {
   Bot, Wand2, Search, Database, Copy, ExternalLink,
   CheckCircle2, AlertTriangle, XCircle, Loader2, ChevronRight,
   MessageCircle, Send, Trash2, Zap, ShieldAlert, Lightbulb,
-  Plus, FileCode, X,
+  Plus, FileCode, X, Sparkles,
   type LucideIcon,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
@@ -352,6 +352,7 @@ export default function AssistantPage({ onNavigate }: { onNavigate: (p: string) 
   const [errorMsg, setError] = useState("");
   const [showPasteModal, setShowPasteModal] = useState(false);
   const [pastedSQL, setPastedSQL] = useState("");
+  const [isOptimizing, setIsOptimizing] = useState(false);
 
   // Dedicated mode results
   const [explanation,  setExplanation]  = useState("");
@@ -422,6 +423,40 @@ export default function AssistantPage({ onNavigate }: { onNavigate: (p: string) 
     setMode(m); clearResults();
     if (m === "analyze") setInput("");
   };
+
+  // ── Prompt Optimizer ────────────────────────────────────────────────────────
+  const optimizePrompt = useCallback(async () => {
+    if (!input.trim()) {
+      toast.error("Please enter a prompt first.");
+      return;
+    }
+
+    setIsOptimizing(true);
+    toast.loading("Optimizing your prompt...", { id: "optimize" });
+
+    try {
+      const res = await fetch("/api/assistant", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          mode: "optimize", 
+          input: input.trim(),
+          currentMode: mode 
+        }),
+      });
+      const data = await res.json();
+      
+      if (!res.ok || data.error) throw new Error(data.error ?? "Optimization failed");
+
+      setInput(data.optimizedPrompt || input);
+      toast.success("✨ Prompt optimized!", { id: "optimize" });
+    } catch (err: unknown) {
+      toast.error("Failed to optimize prompt. Please try again.", { id: "optimize" });
+      console.error(err);
+    } finally {
+      setIsOptimizing(false);
+    }
+  }, [input, mode]);
 
   // ── Local (instant, no API) schema analysis ────────────────────────────────
   const runLocalAnalysis = useCallback(() => {
@@ -849,12 +884,22 @@ export default function AssistantPage({ onNavigate }: { onNavigate: (p: string) 
                 placeholder:text-[var(--text-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/25
                 focus:border-[var(--primary)] transition-all px-4 py-3 disabled:opacity-50"
             />
+            <button 
+              onClick={optimizePrompt} 
+              disabled={isOptimizing || !input.trim()}
+              title="Optimize Prompt"
+              className="px-4 py-3 rounded-xl border border-[var(--border)] bg-[var(--card)] text-[var(--primary)] 
+                hover:bg-[var(--primary-light)] transition-all disabled:opacity-50 disabled:cursor-not-allowed 
+                flex items-center gap-2 font-semibold"
+            >
+              {isOptimizing ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
+            </button>
             <button onClick={() => handleRun()} disabled={status === "loading" || !input.trim()}
               className="btn-primary px-5 py-3 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-base font-semibold">
               {status === "loading" ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
             </button>
           </div>
-          <p className="text-xs text-[var(--text-subtle)]">Press Enter to send · Shift+Enter for new line</p>
+          <p className="text-xs text-[var(--text-subtle)]">Press Enter to send · Shift+Enter for new line · ✨ Optimize = Refine prompt with AI</p>
         </div>
       )}
 
@@ -871,10 +916,21 @@ export default function AssistantPage({ onNavigate }: { onNavigate: (p: string) 
               placeholder:text-[var(--text-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/25
               focus:border-[var(--primary)] transition-all resize-y p-4 font-mono leading-relaxed"
           />
-          <button onClick={() => handleRun()} disabled={status === "loading"}
-            className="btn-primary text-sm px-5 py-2.5 disabled:opacity-60 flex items-center gap-2">
-            {status === "loading" ? <><Loader2 size={13} className="animate-spin" />Explaining…</> : <><Search size={13} />Explain SQL</>}
-          </button>
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={optimizePrompt} 
+              disabled={isOptimizing || !input.trim()}
+              className="px-4 py-2.5 rounded-xl border border-[var(--border)] bg-[var(--card)] text-[var(--primary)] 
+                hover:bg-[var(--primary-light)] transition-all disabled:opacity-60 disabled:cursor-not-allowed 
+                flex items-center gap-2 text-sm font-semibold"
+            >
+              {isOptimizing ? <><Loader2 size={13} className="animate-spin" />Optimizing…</> : <><Sparkles size={13} />Optimize Prompt</>}
+            </button>
+            <button onClick={() => handleRun()} disabled={status === "loading"}
+              className="btn-primary text-sm px-5 py-2.5 disabled:opacity-60 flex items-center gap-2">
+              {status === "loading" ? <><Loader2 size={13} className="animate-spin" />Explaining…</> : <><Search size={13} />Explain SQL</>}
+            </button>
+          </div>
           {status === "loading" && (
             <div className="card flex items-center justify-center py-12 gap-3">
               <Loader2 size={18} className="text-[var(--primary)] animate-spin" />
@@ -906,10 +962,21 @@ export default function AssistantPage({ onNavigate }: { onNavigate: (p: string) 
               placeholder:text-[var(--text-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/25
               focus:border-[var(--primary)] transition-all resize-y p-4 leading-relaxed"
           />
-          <button onClick={() => handleRun()} disabled={status === "loading"}
-            className="btn-primary text-sm px-5 py-2.5 disabled:opacity-60 flex items-center gap-2">
-            {status === "loading" ? <><Loader2 size={13} className="animate-spin" />Generating…</> : <><Wand2 size={13} />Generate SQL</>}
-          </button>
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={optimizePrompt} 
+              disabled={isOptimizing || !input.trim()}
+              className="px-4 py-2.5 rounded-xl border border-[var(--border)] bg-[var(--card)] text-[var(--primary)] 
+                hover:bg-[var(--primary-light)] transition-all disabled:opacity-60 disabled:cursor-not-allowed 
+                flex items-center gap-2 text-sm font-semibold"
+            >
+              {isOptimizing ? <><Loader2 size={13} className="animate-spin" />Optimizing…</> : <><Sparkles size={13} />Optimize Prompt</>}
+            </button>
+            <button onClick={() => handleRun()} disabled={status === "loading"}
+              className="btn-primary text-sm px-5 py-2.5 disabled:opacity-60 flex items-center gap-2">
+              {status === "loading" ? <><Loader2 size={13} className="animate-spin" />Generating…</> : <><Wand2 size={13} />Generate SQL</>}
+            </button>
+          </div>
           {status === "loading" && (
             <div className="card flex items-center justify-center py-12 gap-3">
               <Loader2 size={18} className="text-[var(--primary)] animate-spin" />

@@ -89,6 +89,30 @@ RULES:
 User question: ${question}`;
 }
 
+function optimizePromptText(userPrompt: string, currentMode: string): string {
+  const modeContext = currentMode === "explain" 
+    ? "explaining SQL queries" 
+    : currentMode === "generate"
+    ? "generating SQL queries from natural language"
+    : "asking questions about database schemas";
+
+  return `You are a prompt optimization AI. The user is about to submit a prompt for ${modeContext}.
+
+Your task: Refine and improve their rough prompt to be clear, specific, technically accurate, and well-structured.
+
+Rules:
+- Make the prompt more specific and actionable
+- Add relevant technical details if needed
+- Fix grammar and spelling errors
+- Keep the core intent unchanged
+- Output ONLY the optimized prompt text, no explanations or meta-commentary
+- Maximum 3 sentences
+- If the prompt is already excellent, return it as-is
+
+User's original prompt:
+${userPrompt}`;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Main handler
 // ─────────────────────────────────────────────────────────────────────────────
@@ -104,6 +128,7 @@ export async function POST(req: NextRequest) {
     const input: string         = (body.input         ?? "").trim();
     const schema: string        = (body.schema        ?? "").trim();
     const schemaContext: string = (body.schemaContext  ?? "").trim();
+    const currentMode: string   = (body.currentMode   ?? "").trim();
 
     if (!mode) return NextResponse.json({ error: "mode is required" }, { status: 400 });
 
@@ -123,6 +148,10 @@ export async function POST(req: NextRequest) {
       if (!input) return NextResponse.json({ error: "Question is required" }, { status: 400 });
       if (input.length > 2000) return NextResponse.json({ error: "Question too long (max 2000 chars)" }, { status: 400 });
       prompt = chatPrompt(input, schema, schemaContext);
+    } else if (mode === "optimize") {
+      if (!input) return NextResponse.json({ error: "Prompt text is required for optimize mode" }, { status: 400 });
+      if (input.length > 2000) return NextResponse.json({ error: "Prompt too long (max 2000 chars)" }, { status: 400 });
+      prompt = optimizePromptText(input, currentMode);
     } else {
       return NextResponse.json({ error: `Unknown mode: ${mode}` }, { status: 400 });
     }
@@ -182,6 +211,10 @@ export async function POST(req: NextRequest) {
 
     if (mode === "chat") {
       return NextResponse.json({ answer: raw, processingTime: Date.now() - t0 });
+    }
+
+    if (mode === "optimize") {
+      return NextResponse.json({ optimizedPrompt: raw, processingTime: Date.now() - t0 });
     }
 
     return NextResponse.json({ error: "Unhandled mode" }, { status: 500 });
