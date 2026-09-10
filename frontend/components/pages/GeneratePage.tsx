@@ -7,13 +7,15 @@ import {
   AlertTriangle, ArrowRight, FileText, FileJson,
   Sparkles, ChevronDown, ChevronUp, Lightbulb,
   FolderOpen, Plus, X, Save, GitFork, Share2, Layers, Terminal,
-  Loader2, XCircle, Zap,
+  Loader2, XCircle, Zap, Undo2,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { parseSQLStats, downloadText, downloadJSON, genId, formatTime, cn } from "@/lib/utils";
-import { canConvert, conversionsLeft, canCreateProject, canGenerateAI, aiGenerationsLeft, getQuestionCreditCost } from "@/lib/subscription";
+import { canConvert, conversionsLeft, canCreateProject } from "@/lib/subscription";
+import { optimizeSchemaPromptLocally } from "@/lib/promptOptimizer";
 import type { Project, DBType } from "@/lib/types";
 import UpgradeLimitDialog from "@/components/UpgradeLimitDialog";
+import AICreditsWidget from "@/components/AICreditsWidget";
 import dynamic from "next/dynamic";
 import toast from "react-hot-toast";
 
@@ -117,12 +119,10 @@ interface GenerateResult {
 }
 
 export default function GeneratePage({ onNavigate }: { onNavigate: (p: string) => void }) {
-  const { getSubscription, incrementConversions, incrementAIGenerations, theme, user, projects, upsertProject, upsertFile, setActiveProject, setPlaygroundInitialSQL, defaultColumnsEnabled, defaultColumns } = useStore();
+  const { getSubscription, incrementConversions, theme, user, projects, upsertProject, upsertFile, setActiveProject, setPlaygroundInitialSQL, defaultColumnsEnabled, defaultColumns, schemaDirectives } = useStore();
   const sub = getSubscription();
   const ownerId = user?.id ?? "";
   const myProjects = projects.filter(p => p.ownerId === ownerId);
-  const canUseAI = canGenerateAI(sub);
-  const aiCreditsLeft = aiGenerationsLeft(sub);
 
   const [description, setDescription]   = useState("");
   const [selectedDb, setSelectedDb]     = useState("postgresql");
@@ -145,18 +145,19 @@ export default function GeneratePage({ onNavigate }: { onNavigate: (p: string) =
   const [newProjectName, setNewProjectName] = useState("");
   const [saving, setSaving]             = useState(false);
 
-  // AI SQL Generator state
-  const [aiPanelOpen, setAiPanelOpen] = useState(false);
-  const [aiPrompt, setAiPrompt] = useState("");
-  const [aiGenerating, setAiGenerating] = useState(false);
-  const [aiGeneratedSQL, setAiGeneratedSQL] = useState("");
-  const [aiError, setAiError] = useState<string | null>(null);
+  // Prompt Optimizer state
+  const [isOptimizing, setIsOptimizing] = useState(false);
+  const [previousPrompt, setPreviousPrompt] = useState<string | null>(null);
+
+
 
   const activeDb = DB_OPTIONS.find((d) => d.value === selectedDb) ?? DB_OPTIONS[0];
   const left = conversionsLeft(sub);
 
   // ── Sanitize Mermaid syntax before rendering ──────────────────────────────
   function sanitizeMermaid(raw: string): string {
+    console.log("🔧 Sanitizing Mermaid. Input type check:", raw.slice(0, 50));
+    
     let s = raw.trim();
     const lower = s.toLowerCase();
 
@@ -294,9 +295,15 @@ export default function GeneratePage({ onNavigate }: { onNavigate: (p: string) =
           if (!cancelled) setMermaidSvg(svg);
         })
         .catch((err) => {
-          console.warn("Mermaid render failed:", err?.message ?? err);
-          console.warn("Cleaned mermaid input:\n", cleaned);
-          if (!cancelled) setMermaidError(true);
+          console.error("Mermaid render failed:", err);
+          console.error("Original mermaid input:\n", result.mermaid);
+          console.error("Cleaned mermaid input:\n", cleaned);
+          if (!cancelled) {
+            setMermaidError(true);
+            // Try to give better error message
+            const errorMsg = err?.message || err?.toString() || "Unknown error";
+            toast.error(`Diagram preview failed: ${errorMsg.slice(0, 100)}`);
+          }
         });
     });
     return () => { cancelled = true; };
@@ -335,10 +342,15 @@ export default function GeneratePage({ onNavigate }: { onNavigate: (p: string) =
       
       // Add default columns if enabled
       if (defaultColumnsEnabled && defaultColumns.length > 0) {
-        const validColumns = defaultColumns.filter(col => col.name && col.type);
+        const validColumns = defaultColumns.filter(col => col.name && col.type && col.active !== false);
         if (validColumns.length > 0) {
           payload.defaultColumns = validColumns;
         }
+      }
+
+      // Add global schema directives if configured
+      if (schemaDirectives && schemaDirectives.trim()) {
+        payload.schemaDirectives = schemaDirectives.trim();
       }
       
       const res = await fetch("/api/generate", {
@@ -348,6 +360,8 @@ export default function GeneratePage({ onNavigate }: { onNavigate: (p: string) =
       });
       const data = await res.json();
       stopAnim();
+
+      console.log("✅ Generation response:", { diagramType, mermaidPreview: data.mermaid?.slice(0, 200) });
 
       if (!res.ok || !data.sql || !data.mermaid) throw new Error(data.error || "Generation failed");
 
@@ -491,67 +505,88 @@ export default function GeneratePage({ onNavigate }: { onNavigate: (p: string) =
     onNavigate("project-detail");
   };
 
-  // ── AI SQL Generation ─────────────────────────────────────────────────────────
-  const generateAISQL = useCallback(async () => {
-    if (!aiPrompt.trim()) {
-      toast.error("Please describe what you want to generate");
+  // ── Prompt Optimizer ────────────────────────────────────────────────────────
+  const handleOptimizePrompt = useCallback(async (customAddition?: string) => {
+    const current = description.trim();
+    if (!current) {
+      toast.error("Please enter a brief database idea first (e.g. 'ecommerce store')");
       return;
     }
 
-    const cost = getQuestionCreditCost(aiPrompt, "generate");
-    if (aiCreditsLeft < cost) {
-      toast.error(`Insufficient AI credits. Required: ${cost} credits, available: ${aiCreditsLeft} credits.`);
-      window.dispatchEvent(new CustomEvent("navigate", { detail: "pricing" }));
-      return;
-    }
-
-    setAiGenerating(true);
-    setAiError(null);
-    setAiGeneratedSQL("");
+    setIsOptimizing(true);
+    const toastId = toast.loading("Optimizing prompt with AI schema architect...");
 
     try {
-      const currentSQL = result?.sql || "";
+      setPreviousPrompt(description);
+      const activeCols = defaultColumnsEnabled ? defaultColumns.filter(c => c.name && c.type && c.active !== false) : undefined;
       const res = await fetch("/api/assistant", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          mode: "generate",
-          input: aiPrompt,
-          schema: currentSQL,
+          mode: "optimize",
+          input: customAddition ? `${current}. Specifically add: ${customAddition}` : current,
+          currentMode: "schema-generate",
+          defaultColumns: activeCols,
+          schemaDirectives: schemaDirectives || undefined,
         }),
       });
 
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.error || `Failed to generate SQL (${res.status})`);
-      }
-
       const data = await res.json();
-      setAiGeneratedSQL(data.sql || "");
-      
-      // Increment AI generation credits with cost amount
-      incrementAIGenerations(cost);
-      
-      toast.success(`SQL generated successfully! (-${cost} AI credits)`);
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "Failed to generate SQL";
-      setAiError(errorMessage);
-      toast.error(errorMessage);
+      if (res.ok && data.optimizedPrompt && !data.error) {
+        setDescription(data.optimizedPrompt.trim());
+        toast.success("✨ Prompt optimized with detailed tables & relationships!", { id: toastId });
+      } else {
+        const localOptimized = optimizeSchemaPromptLocally(
+          customAddition ? `${current} with ${customAddition}` : current,
+          { defaultColumns, defaultColumnsEnabled, schemaDirectives }
+        );
+        setDescription(localOptimized);
+        toast.success("✨ Prompt enriched with production-ready tables & constraints!", { id: toastId });
+      }
+    } catch {
+      const localOptimized = optimizeSchemaPromptLocally(current, {
+        defaultColumns,
+        defaultColumnsEnabled,
+        schemaDirectives
+      });
+      setDescription(localOptimized);
+      toast.success("✨ Prompt enriched with production-ready tables & constraints!", { id: toastId });
     } finally {
-      setAiGenerating(false);
+      setIsOptimizing(false);
     }
-  }, [aiPrompt, result?.sql, canUseAI, incrementAIGenerations]);
+  }, [description, defaultColumns, defaultColumnsEnabled, schemaDirectives]);
+
+  const handleUndoPrompt = () => {
+    if (previousPrompt !== null) {
+      setDescription(previousPrompt);
+      setPreviousPrompt(null);
+      toast.success("Reverted to previous prompt");
+    }
+  };
+
+
 
   return (
     <div className="w-full px-1">
 
       {/* ── Header ── */}
-      <div className="flex items-start justify-between mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
         <div>
           <div className="flex items-center gap-3 mb-2">
             <Wand2 size={22} className="text-primary-600" />
             <h1 className="text-3xl font-bold text-[var(--text)]">Generate Schema</h1>
             <span className="badge badge-emerald text-xs px-2.5 py-1">AI Powered</span>
+            {defaultColumnsEnabled && defaultColumns.filter(c => c.active !== false).length > 0 && (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-purple-50 text-purple-700 border border-purple-200 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800">
+                <Sparkles size={12} />
+                {defaultColumns.filter(c => c.active !== false).length} Custom Columns Active
+              </span>
+            )}
+            {schemaDirectives && schemaDirectives.trim() && (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-300 dark:border-indigo-800">
+                Directives Applied
+              </span>
+            )}
           </div>
           <p className="text-base text-[var(--text-muted)]">
             Describe your database in plain English and get an ER diagram + SQL instantly.&nbsp;
@@ -559,23 +594,14 @@ export default function GeneratePage({ onNavigate }: { onNavigate: (p: string) =
             &nbsp;remaining this month.
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setAiPanelOpen(!aiPanelOpen)}
-            className={cn(
-              "flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold shrink-0 transition-all",
-              aiPanelOpen ? "bg-[var(--primary)] text-white" : "bg-[var(--card)] text-[var(--text)] border border-[var(--border)] hover:bg-[var(--surface)]"
-            )}
-          >
-            <Sparkles size={14} />
-            <span>AI SQL</span>
-          </button>
-          {sub.planId !== "pro" && (
+        <div className="flex items-center gap-3 flex-wrap">
+          <AICreditsWidget onNavigate={onNavigate} />
+          {sub.planId !== "pro" && sub.planId !== "ultimate" && (
             <button
               onClick={() => onNavigate("pricing")}
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold shrink-0
                 bg-gradient-to-r from-primary-600 to-primary-700 text-white
-                hover:shadow-lg hover:shadow-primary-500/25 transition-all"
+                hover:shadow-lg hover:shadow-primary-500/25 transition-all cursor-pointer"
             >
               Upgrade to Pro <ArrowRight size={14} />
             </button>
@@ -615,129 +641,7 @@ export default function GeneratePage({ onNavigate }: { onNavigate: (p: string) =
         </div>
       </div>
 
-      {/* ── AI SQL Generator Panel ── */}
-      <AnimatePresence>
-        {aiPanelOpen && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2, ease: "easeInOut" }}
-            className="mb-6 border border-[var(--border)] rounded-xl bg-[var(--card)] overflow-hidden"
-          >
-            <div className="p-4 space-y-3">
-              <div className="flex items-center gap-2 mb-2">
-                <Sparkles size={14} className="text-[var(--primary)]" />
-                <span className="text-xs font-bold text-[var(--text)]">AI SQL Query Generator</span>
-                <div className="ml-auto flex items-center gap-1.5">
-                  {sub.planId === "pro" ? (
-                    <span className="text-[10px] text-[var(--primary)] font-medium">
-                      Unlimited
-                    </span>
-                  ) : (
-                    <span className="text-[10px] text-[var(--text-subtle)]">
-                      {aiCreditsLeft} credits left
-                    </span>
-                  )}
-                </div>
-              </div>
-              
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={aiPrompt}
-                  onChange={(e) => setAiPrompt(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && generateAISQL()}
-                  placeholder="e.g., 'Show all students enrolled in Computer Science course'"
-                  className="flex-1 px-3 py-2 rounded-lg text-sm border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] placeholder:text-[var(--text-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/20 focus:border-[var(--primary)]"
-                  disabled={aiGenerating || !canUseAI}
-                />
-                <button
-                  onClick={generateAISQL}
-                  disabled={aiGenerating || !aiPrompt.trim() || !canUseAI}
-                  className="btn-primary btn-sm gap-1.5 min-w-[100px]"
-                >
-                  {aiGenerating ? (
-                    <>
-                      <Loader2 size={13} className="animate-spin" />
-                      <span>Generating...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles size={13} />
-                      <span>Generate</span>
-                    </>
-                  )}
-                </button>
-              </div>
 
-              {sub.planId !== "pro" && aiCreditsLeft <= 10 && aiCreditsLeft > 0 && (
-                <div className="flex items-start gap-2 p-2 rounded-lg bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20">
-                  <Zap size={14} className="text-amber-500 flex-shrink-0 mt-0.5" />
-                  <div className="flex-1">
-                    <p className="text-xs text-amber-700 dark:text-amber-400 font-medium">
-                      {aiCreditsLeft} AI credits remaining
-                    </p>
-                    <p className="text-[10px] text-amber-600 dark:text-amber-500 mt-0.5">
-                      Upgrade to Pro for unlimited AI SQL generation
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {sub.planId !== "pro" && aiCreditsLeft === 0 && (
-                <div className="flex items-start gap-2 p-2 rounded-lg bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20">
-                  <XCircle size={14} className="text-red-500 flex-shrink-0 mt-0.5" />
-                  <div className="flex-1">
-                    <p className="text-xs text-red-700 dark:text-red-400 font-medium">
-                      No AI credits remaining
-                    </p>
-                    <button
-                      onClick={() => onNavigate("pricing")}
-                      className="text-[10px] text-red-600 dark:text-red-500 mt-0.5 underline hover:no-underline"
-                    >
-                      Upgrade to Pro for unlimited access →
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {aiError && (
-                <div className="flex items-start gap-2 p-2 rounded-lg bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20">
-                  <XCircle size={14} className="text-red-500 flex-shrink-0 mt-0.5" />
-                  <p className="text-xs text-red-600 dark:text-red-400">{aiError}</p>
-                </div>
-              )}
-
-              {aiGeneratedSQL && (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-semibold text-[var(--text-subtle)] uppercase tracking-wider">
-                      Generated SQL
-                    </span>
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={() => {
-                          navigator.clipboard.writeText(aiGeneratedSQL);
-                          toast.success("SQL copied to clipboard");
-                        }}
-                        className="px-2 py-1 rounded-md text-[10px] font-medium bg-[var(--surface)] text-[var(--text)] hover:bg-[var(--border)] transition-colors"
-                      >
-                        Copy
-                      </button>
-                    </div>
-                  </div>
-                  <div className="rounded-lg p-3 bg-[var(--surface)] border border-[var(--border)] overflow-x-auto">
-                    <pre className="text-xs font-mono text-[var(--text)] whitespace-pre-wrap">
-                      {aiGeneratedSQL}
-                    </pre>
-                  </div>
-                </div>
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* ── Database Selector ── */}
       <div className="mb-6">
@@ -771,16 +675,58 @@ export default function GeneratePage({ onNavigate }: { onNavigate: (p: string) =
 
       {/* ── Input Area ── */}
       <div className="card p-5 mb-6">
-        <div className="flex items-center justify-between mb-3">
-          <label className="text-base font-bold text-[var(--text)]">Describe your database</label>
-          <button
-            onClick={() => setShowExamples(!showExamples)}
-            className="flex items-center gap-1.5 text-sm text-[var(--text-muted)] font-medium hover:text-[var(--text)] transition-colors"
-          >
-            <Lightbulb size={15} />
-            Examples
-            {showExamples ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-          </button>
+        <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+          <div className="flex items-center gap-2">
+            <FileText size={17} className="text-[var(--text-muted)]" />
+            <label className="text-base font-bold text-[var(--text)]">Describe your database</label>
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            {previousPrompt !== null && (
+              <button
+                type="button"
+                onClick={handleUndoPrompt}
+                className="flex items-center gap-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--text)] px-2.5 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface)] transition-all cursor-pointer"
+                title="Revert to previous prompt"
+              >
+                <Undo2 size={12} /> Undo
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={() => handleOptimizePrompt()}
+              disabled={isOptimizing || status === "processing"}
+              className={cn(
+                "flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border transition-all cursor-pointer shadow-xs",
+                isOptimizing
+                  ? "bg-[var(--primary-light)] text-[var(--primary)] border-[var(--primary)]/30 opacity-80 cursor-wait"
+                  : "bg-[var(--primary-light)] text-[var(--primary)] border-[var(--primary-border,rgba(37,99,235,0.3))] hover:bg-[var(--primary)] hover:text-white"
+              )}
+              title="Expand and enrich prompt with entities, relationships, and constraints"
+            >
+              {isOptimizing ? (
+                <>
+                  <Loader2 size={13} className="animate-spin" />
+                  <span>Optimizing…</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles size={13} />
+                  <span>Optimize Prompt</span>
+                </>
+              )}
+            </button>
+
+            <button
+              onClick={() => setShowExamples(!showExamples)}
+              className="flex items-center gap-1.5 text-sm text-[var(--text-muted)] font-medium hover:text-[var(--text)] transition-colors cursor-pointer"
+            >
+              <Lightbulb size={15} />
+              Examples
+              {showExamples ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            </button>
+          </div>
         </div>
 
         <AnimatePresence>
@@ -819,6 +765,29 @@ export default function GeneratePage({ onNavigate }: { onNavigate: (p: string) =
             focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500
             transition-all disabled:opacity-50"
         />
+
+        {/* Quick prompt enhancer suggestions */}
+        <div className="flex items-center gap-1.5 flex-wrap mt-2.5">
+          <span className="text-[11px] font-semibold text-[var(--text-subtle)] flex items-center gap-1">
+            <Sparkles size={11} className="text-[var(--primary)]" /> Quick Enhance:
+          </span>
+          {[
+            "Add audit timestamps & soft deletes",
+            "Include user roles & permissions",
+            "Add payment processing & invoicing",
+            "Include status tracking & notifications",
+          ].map((tag) => (
+            <button
+              key={tag}
+              type="button"
+              disabled={isOptimizing || status === "processing"}
+              onClick={() => handleOptimizePrompt(tag)}
+              className="text-[11px] px-2 py-0.5 rounded-md border border-[var(--border)] bg-[var(--surface)] text-[var(--text-muted)] hover:text-[var(--primary)] hover:border-[var(--primary)] transition-colors cursor-pointer"
+            >
+              + {tag}
+            </button>
+          ))}
+        </div>
         <div className="flex items-center justify-between mt-3">
           <span className="text-sm text-[var(--text-subtle)]">
             {description.length} / 2000 characters
@@ -1039,10 +1008,43 @@ export default function GeneratePage({ onNavigate }: { onNavigate: (p: string) =
                     <div className="flex flex-col items-center gap-4 py-12 text-center">
                       <AlertTriangle size={24} className="text-amber-500" />
                       <div>
-                        <p className="text-sm font-semibold text-[var(--text)]">Diagram preview unavailable</p>
-                        <p className="text-xs text-[var(--text-muted)] mt-1">The Mermaid syntax may need a tweak. You can still copy/download the SQL.</p>
+                        <p className="text-sm font-semibold text-[var(--text)]">Mermaid diagram preview unavailable</p>
+                        <p className="text-xs text-[var(--text-muted)] mt-1">The Mermaid syntax couldn't be rendered. Use the interactive ER Diagram instead.</p>
                       </div>
-                      <details className="text-left w-full max-w-lg">
+                      <button
+                        onClick={() => {
+                          // Open the SQL in ER Diagram modal
+                          if (result?.sql) {
+                            const modal = document.createElement('div');
+                            modal.id = 'temp-er-modal';
+                            document.body.appendChild(modal);
+                            
+                            import('react-dom/client').then(({ createRoot }) => {
+                              import('@/components/ERDiagramModal').then((mod) => {
+                                const ERDiagramModal = mod.default;
+                                const root = createRoot(modal);
+                                root.render(
+                                  <ERDiagramModal
+                                    sql={result.sql}
+                                    isOpen={true}
+                                    onClose={() => {
+                                      root.unmount();
+                                      document.body.removeChild(modal);
+                                    }}
+                                    theme={theme}
+                                    initialTab="er"
+                                  />
+                                );
+                              });
+                            });
+                          }
+                        }}
+                        className="btn-primary px-5 py-2.5 text-sm font-semibold flex items-center gap-2"
+                      >
+                        <Database size={14} />
+                        Open Interactive ER Diagram
+                      </button>
+                      <details className="text-left w-full max-w-lg mt-2">
                         <summary className="text-xs text-primary-600 cursor-pointer font-medium">Show raw Mermaid syntax</summary>
                         <pre className="mt-2 p-3 rounded-lg bg-[var(--surface)] text-xs text-[var(--text)] overflow-auto border border-[var(--border)] whitespace-pre-wrap">
                           {result.mermaid}
